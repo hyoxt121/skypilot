@@ -116,6 +116,16 @@ _REMOTE_RUNTIME_FILES_DIR = '~/.sky/.runtime_files'
 _ENDPOINTS_RETRY_MESSAGE = ('If the cluster was recently started, '
                             'please retry after a while.')
 
+# If a cluster is less than LAUNCH_DOUBLE_CHECK_WINDOW seconds old, and we don't
+# see any instances in the cloud, the instances might be in the proccess of
+# being created. We will wait LAUNCH_DOUBLE_CHECK_DELAY seconds and then double
+# check to make sure there are still no instances. LAUNCH_DOUBLE_CHECK_DELAY
+# should be set longer than the delay between (sending the create instance
+# request) and (the instances appearing on the cloud).
+# See https://github.com/skypilot-org/skypilot/issues/4431.
+_LAUNCH_DOUBLE_CHECK_WINDOW = 60
+_LAUNCH_DOUBLE_CHECK_DELAY = 1
+
 # Include the fields that will be used for generating tags that distinguishes
 # the cluster in ray, to avoid the stopped cluster being discarded due to
 # updates in the yaml template.
@@ -162,6 +172,16 @@ _RAY_YAML_KEYS_TO_RESTORE_EXCEPTIONS = [
     ('available_node_types', 'ray.head.default', 'node_config', 'UserData'),
     ('available_node_types', 'ray.head.default', 'node_config',
      'azure_arm_parameters', 'cloudInitSetupCommands'),
+]
+# These keys are expected to change when provisioning on an existing cluster,
+# but they don't actually represent a change that requires re-provisioning the
+# cluster.  If the cluster yaml is the same except for these keys, we can safely
+# skip reprovisioning. See _deterministic_cluster_yaml_hash.
+_RAY_YAML_KEYS_TO_REMOVE_FOR_HASH = [
+    # On first launch, availability_zones will include all possible zones. Once
+    # the cluster exists, it will only include the zone that the cluster is
+    # actually in.
+    ('provider', 'availability_zone'),
 ]
 
 
@@ -1077,7 +1097,7 @@ def _deterministic_cluster_yaml_hash(yaml_path: str) -> str:
     yaml file and all the files in the file mounts, then hash the byte sequence.
 
     The format of the byte sequence is:
-    32 bytes - sha256 hash of the yaml file
+    32 bytes - sha256 hash of the yaml
     for each file mount:
       file mount remote destination (UTF-8), \0
       if the file mount source is a file:
@@ -1101,14 +1121,29 @@ def _deterministic_cluster_yaml_hash(yaml_path: str) -> str:
     we construct it incrementally by using hash.update() to add new bytes.
     """
 
+    # Load the yaml contents so that we can directly remove keys.
+    yaml_config = common_utils.read_yaml(yaml_path)
+    for key_list in _RAY_YAML_KEYS_TO_REMOVE_FOR_HASH:
+        dict_to_remove_from = yaml_config
+        found_key = True
+        for key in key_list[:-1]:
+            if (not isinstance(dict_to_remove_from, dict) or
+                    key not in dict_to_remove_from):
+                found_key = False
+                break
+            dict_to_remove_from = dict_to_remove_from[key]
+        if found_key and key_list[-1] in dict_to_remove_from:
+            dict_to_remove_from.pop(key_list[-1])
+
     def _hash_file(path: str) -> bytes:
         return common_utils.hash_file(path, 'sha256').digest()
 
     config_hash = hashlib.sha256()
 
-    config_hash.update(_hash_file(yaml_path))
+    yaml_hash = hashlib.sha256(
+        common_utils.dump_yaml_str(yaml_config).encode('utf-8'))
+    config_hash.update(yaml_hash.digest())
 
-    yaml_config = common_utils.read_yaml(yaml_path)
     file_mounts = yaml_config.get('file_mounts', {})
     # Remove the file mounts added by the newline.
     if '' in file_mounts:
@@ -1116,6 +1151,11 @@ def _deterministic_cluster_yaml_hash(yaml_path: str) -> str:
         file_mounts.pop('')
 
     for dst, src in sorted(file_mounts.items()):
+        if src == yaml_path:
+            # Skip the yaml file itself. We have already hashed a modified
+            # version of it. The file may include fields we don't want to hash.
+            continue
+
         expanded_src = os.path.expanduser(src)
         config_hash.update(dst.encode('utf-8') + b'\0')
 
@@ -1926,13 +1966,12 @@ def _update_cluster_status_no_lock(
             logger.debug(
                 f'Refreshing status ({cluster_name!r}) failed to get IPs.')
         except RuntimeError as e:
-            logger.debug(str(e))
+            logger.debug(common_utils.format_exception(e))
         except Exception as e:  # pylint: disable=broad-except
             # This can be raised by `external_ssh_ports()`, due to the
             # underlying call to kubernetes API.
-            logger.debug(
-                f'Refreshing status ({cluster_name!r}) failed: '
-                f'{common_utils.format_exception(e, use_bracket=True)}')
+            logger.debug(f'Refreshing status ({cluster_name!r}) failed: ',
+                         exc_info=e)
         return False
 
     # Determining if the cluster is healthy (UP):
@@ -1959,6 +1998,24 @@ def _update_cluster_status_no_lock(
         return record
 
     # All cases below are transitioning the cluster to non-UP states.
+
+    if (not node_statuses and handle.launched_resources.cloud.STATUS_VERSION >=
+            clouds.StatusVersion.SKYPILOT):
+        # Note: launched_at is set during sky launch, even on an existing
+        # cluster. This will catch the case where the cluster was terminated on
+        # the cloud and restarted by sky launch.
+        time_since_launch = time.time() - record['launched_at']
+        if (record['status'] == status_lib.ClusterStatus.INIT and
+                time_since_launch < _LAUNCH_DOUBLE_CHECK_WINDOW):
+            # It's possible the instances for this cluster were just created,
+            # and haven't appeared yet in the cloud API/console. Wait for a bit
+            # and check again. This is a best-effort leak prevention check.
+            # See https://github.com/skypilot-org/skypilot/issues/4431.
+            time.sleep(_LAUNCH_DOUBLE_CHECK_DELAY)
+            node_statuses = _query_cluster_status_via_cloud_api(handle)
+            # Note: even if all the node_statuses are UP now, we will still
+            # consider this cluster abnormal, and its status will be INIT.
+
     if len(node_statuses) > handle.launched_nodes:
         # Unexpected: in the queried region more than 1 cluster with the same
         # constructed name tag returned. This will typically not happen unless
@@ -1987,13 +2044,15 @@ def _update_cluster_status_no_lock(
                 f'{colorama.Style.RESET_ALL}')
     assert len(node_statuses) <= handle.launched_nodes
 
-    # If the node_statuses is empty, all the nodes are terminated. We can
-    # safely set the cluster status to TERMINATED. This handles the edge case
-    # where the cluster is terminated by the user manually through the UI.
+    # If the node_statuses is empty, it should mean that all the nodes are
+    # terminated and we can set the cluster status to TERMINATED. This handles
+    # the edge case where the cluster is terminated by the user manually through
+    # the UI.
     to_terminate = not node_statuses
 
-    # A cluster is considered "abnormal", if not all nodes are TERMINATED or
-    # not all nodes are STOPPED. We check that with the following logic:
+    # A cluster is considered "abnormal", if some (but not all) nodes are
+    # TERMINATED, or not all nodes are STOPPED. We check that with the following
+    # logic:
     #   * Not all nodes are terminated and there's at least one node
     #     terminated; or
     #   * Any of the non-TERMINATED nodes is in a non-STOPPED status.
@@ -2005,6 +2064,8 @@ def _update_cluster_status_no_lock(
     #     cluster is probably down.
     #   * The cluster is partially terminated or stopped should be considered
     #     abnormal.
+    #   * The cluster is partially or completely in the INIT state, which means
+    #     that provisioning was interrupted. This is considered abnormal.
     #
     # An abnormal cluster will transition to INIT and have any autostop setting
     # reset (unless it's autostopping/autodowning).
