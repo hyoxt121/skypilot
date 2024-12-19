@@ -331,26 +331,35 @@ class SCPNodeProvider(NodeProvider):
                 out_rule_info_list.append(rule_info)
         out_rule_info = out_rule_info_list[0]
 
-        firewall_rule_list = self.scp_client.list_firewall_rules(firewall_id)
-
         in_rule_source_ip = in_rule_info['sourceIpAddresses']
         in_rule_destination_ip = in_rule_info['destinationIpAddresses']
 
         out_rule_source_ip = out_rule_info['sourceIpAddresses']
         out_rule_destination_ip = out_rule_info['destinationIpAddresses']
 
-        rule_id_list = []
-        for firewall_rule in firewall_rule_list:
-            source_ip = firewall_rule['sourceIpAddresses']
-            destination_ip = firewall_rule['destinationIpAddresses']
-            if in_rule_source_ip == source_ip and in_rule_destination_ip == destination_ip:
-                rule_id = firewall_rule['ruleId']
-                rule_id_list.append(rule_id)
-            if out_rule_source_ip == source_ip and out_rule_destination_ip == destination_ip:
-                rule_id = firewall_rule['ruleId']
-                rule_id_list.append(rule_id)
-
-        self.scp_client.del_firewall_rules(firewall_id, rule_id_list)
+        attempts = 0
+        max_attempts = 300
+        while attempts < max_attempts:
+            try:
+                rule_id_list = []
+                firewall_rule_list = self.scp_client.list_firewall_rules(
+                    firewall_id)
+                for firewall_rule in firewall_rule_list:
+                    source_ip = firewall_rule['sourceIpAddresses']
+                    destination_ip = firewall_rule['destinationIpAddresses']
+                    if in_rule_source_ip == source_ip and in_rule_destination_ip == destination_ip:
+                        rule_id = firewall_rule['ruleId']
+                        rule_id_list.append(rule_id)
+                    if out_rule_source_ip == source_ip and out_rule_destination_ip == destination_ip:
+                        rule_id = firewall_rule['ruleId']
+                        rule_id_list.append(rule_id)
+                if len(rule_id_list) == 0:
+                    break
+                self.scp_client.del_firewall_rules(firewall_id, rule_id_list)
+            except Exception:
+                attempts += 1
+                time.sleep(5)
+                continue
 
         return
 
