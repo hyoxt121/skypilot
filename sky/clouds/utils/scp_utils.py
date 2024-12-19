@@ -590,3 +590,60 @@ class SCPClient:
     def get_virtual_server_info(self, vm_id):
         url = f'{API_ENDPOINT}/virtual-server/v3/virtual-servers/{vm_id}'
         return self._get(url=url, contents_key=None)
+
+    def create_vpc(self, zone_id):
+        vpc_name = 'skyvpc' + zone_id[5:10]
+        request_body = {
+            'serviceZoneId': zone_id,
+            'tags': [{
+                'tagKey': 'tagKey',
+                'tagValue': 'tagValue'
+            }],
+            'vpcName': vpc_name,
+            'vpcDescription': 'sky vpc'
+        }
+        url = f'{API_ENDPOINT}/vpc/v3/vpcs'
+        return self._post(url, request_body)
+
+    def create_subnet(self, vpc_id, zone_id):
+        subnet_name = 'skysubnet' + zone_id[5:10]
+        request_body = {
+            'subnetCidrBlock': '192.168.0.0/24',
+            'subnetName': subnet_name,
+            'subnetType': 'PUBLIC',
+            'tags': [{
+                'tagKey': 'tagKey',
+                'tagValue': 'tagValue'
+            }],
+            'vpcId': vpc_id,
+            'subnetDescription': 'sky subnet'
+        }
+        url = f'{API_ENDPOINT}/subnet/v2/subnets'
+        return self._post(url, request_body)
+
+    def create_internet_gateway(self, vpc_id):
+        request_body = {
+            'firewallEnabled': True,
+            'firewallLoggable': False,
+            'internetGatewayType': 'SHARED',
+            'tags': [{
+                'tagKey': 'tagKey',
+                'tagValue': 'tagValue'
+            }],
+            'vpcId': vpc_id,
+            'internetGatewayDescription': 'sky internet gateway'
+        }
+        url = f'{API_ENDPOINT}/internet-gateway/v4/internet-gateways'
+        return self._post(url, request_body)
+
+    def get_vpc_info(self, vpc_id):
+        url = f'{API_ENDPOINT}/vpc/v2/vpcs/{vpc_id}'
+        return self._get(url=url, contents_key=None)
+
+    def get_subnet_info(self, subnet_id):
+        url = f'{API_ENDPOINT}/subnet/v2/subnets/{subnet_id}'
+        return self._get(url=url, contents_key=None)
+
+    def get_internet_gateway_info(self, internet_gateway_id):
+        url = f'{API_ENDPOINT}/internet-gateway/v2/internet-gateways/{internet_gateway_id}'
+        return self._get(url=url, contents_key=None)

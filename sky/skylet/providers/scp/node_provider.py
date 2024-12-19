@@ -331,26 +331,35 @@ class SCPNodeProvider(NodeProvider):
                 out_rule_info_list.append(rule_info)
         out_rule_info = out_rule_info_list[0]
 
-        firewall_rule_list = self.scp_client.list_firewall_rules(firewall_id)
-
         in_rule_source_ip = in_rule_info['sourceIpAddresses']
         in_rule_destination_ip = in_rule_info['destinationIpAddresses']
 
         out_rule_source_ip = out_rule_info['sourceIpAddresses']
         out_rule_destination_ip = out_rule_info['destinationIpAddresses']
 
-        rule_id_list = []
-        for firewall_rule in firewall_rule_list:
-            source_ip = firewall_rule['sourceIpAddresses']
-            destination_ip = firewall_rule['destinationIpAddresses']
-            if in_rule_source_ip == source_ip and in_rule_destination_ip == destination_ip:
-                rule_id = firewall_rule['ruleId']
-                rule_id_list.append(rule_id)
-            if out_rule_source_ip == source_ip and out_rule_destination_ip == destination_ip:
-                rule_id = firewall_rule['ruleId']
-                rule_id_list.append(rule_id)
-
-        self.scp_client.del_firewall_rules(firewall_id, rule_id_list)
+        attempts = 0
+        max_attempts = 300
+        while attempts < max_attempts:
+            try:
+                rule_id_list = []
+                firewall_rule_list = self.scp_client.list_firewall_rules(
+                    firewall_id)
+                for firewall_rule in firewall_rule_list:
+                    source_ip = firewall_rule['sourceIpAddresses']
+                    destination_ip = firewall_rule['destinationIpAddresses']
+                    if in_rule_source_ip == source_ip and in_rule_destination_ip == destination_ip:
+                        rule_id = firewall_rule['ruleId']
+                        rule_id_list.append(rule_id)
+                    if out_rule_source_ip == source_ip and out_rule_destination_ip == destination_ip:
+                        rule_id = firewall_rule['ruleId']
+                        rule_id_list.append(rule_id)
+                if len(rule_id_list) == 0:
+                    break
+                self.scp_client.del_firewall_rules(firewall_id, rule_id_list)
+            except Exception:
+                attempts += 1
+                time.sleep(5)
+                continue
 
         return
 
@@ -525,13 +534,57 @@ class SCPNodeProvider(NodeProvider):
                                 'this project.')
 
             zone_config = ZoneConfig(self.scp_client, node_config)
-            vpc_subnets = zone_config.get_vcp_subnets()
-            if (len(vpc_subnets) == 0):
-                raise SCPError("This region/zone does not have available VPCs.")
+            while len(zone_config.get_vcp_subnets()) == 0:
+                try:
+                    zone_id = zone_config.zone_id
+                    response = self.scp_client.create_vpc(zone_id)
+                    time.sleep(5)
+                    vpc_id = response['resourceId']
+                    while True:
+                        vpc_info = self.scp_client.get_vpc_info(vpc_id)
+                        if vpc_info['vpcState'] == 'ACTIVE':
+                            break
+                        else:
+                            time.sleep(5)
+
+                    response = self.scp_client.create_subnet(vpc_id, zone_id)
+                    time.sleep(5)
+                    subnet_id = response['resourceId']
+                    while True:
+                        subnet_info = self.scp_client.get_subnet_info(subnet_id)
+                        if subnet_info['subnetState'] == 'ACTIVE':
+                            break
+                        else:
+                            time.sleep(5)
+
+                    response = self.scp_client.create_internet_gateway(vpc_id)
+                    time.sleep(5)
+                    internet_gateway_id = response['resourceId']
+                    while True:
+                        internet_gateway_info = self.scp_client.get_internet_gateway_info(
+                            internet_gateway_id)
+                        if internet_gateway_info[
+                                'internetGatewayState'] == 'ATTACHED':
+                            break
+                        else:
+                            time.sleep(5)
+
+                    while True:
+                        vpc_info = self.scp_client.get_vpc_info(vpc_id)
+                        if vpc_info['vpcState'] == 'ACTIVE':
+                            break
+                        else:
+                            time.sleep(5)
+
+                    break
+                except Exception as e:
+                    time.sleep(10)
+                    continue
 
             instance_config = zone_config.bootstrap_instance_config(node_config)
             instance_config['virtualServerName'] = self.cluster_name
 
+            vpc_subnets = zone_config.get_vcp_subnets()
             for vpc, subnets in vpc_subnets.items():
                 sg_id = self._config_security_group(
                     zone_config.zone_id, vpc, self.cluster_name)  # sg_name
