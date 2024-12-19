@@ -534,13 +534,57 @@ class SCPNodeProvider(NodeProvider):
                                 'this project.')
 
             zone_config = ZoneConfig(self.scp_client, node_config)
-            vpc_subnets = zone_config.get_vcp_subnets()
-            if (len(vpc_subnets) == 0):
-                raise SCPError("This region/zone does not have available VPCs.")
+            while len(zone_config.get_vcp_subnets()) == 0:
+                try:
+                    zone_id = zone_config.zone_id
+                    response = self.scp_client.create_vpc(zone_id)
+                    time.sleep(5)
+                    vpc_id = response['resourceId']
+                    while True:
+                        vpc_info = self.scp_client.get_vpc_info(vpc_id)
+                        if vpc_info['vpcState'] == 'ACTIVE':
+                            break
+                        else:
+                            time.sleep(5)
+
+                    response = self.scp_client.create_subnet(vpc_id, zone_id)
+                    time.sleep(5)
+                    subnet_id = response['resourceId']
+                    while True:
+                        subnet_info = self.scp_client.get_subnet_info(subnet_id)
+                        if subnet_info['subnetState'] == 'ACTIVE':
+                            break
+                        else:
+                            time.sleep(5)
+
+                    response = self.scp_client.create_internet_gateway(vpc_id)
+                    time.sleep(5)
+                    internet_gateway_id = response['resourceId']
+                    while True:
+                        internet_gateway_info = self.scp_client.get_internet_gateway_info(
+                            internet_gateway_id)
+                        if internet_gateway_info[
+                                'internetGatewayState'] == 'ATTACHED':
+                            break
+                        else:
+                            time.sleep(5)
+
+                    while True:
+                        vpc_info = self.scp_client.get_vpc_info(vpc_id)
+                        if vpc_info['vpcState'] == 'ACTIVE':
+                            break
+                        else:
+                            time.sleep(5)
+
+                    break
+                except Exception as e:
+                    time.sleep(10)
+                    continue
 
             instance_config = zone_config.bootstrap_instance_config(node_config)
             instance_config['virtualServerName'] = self.cluster_name
 
+            vpc_subnets = zone_config.get_vcp_subnets()
             for vpc, subnets in vpc_subnets.items():
                 sg_id = self._config_security_group(
                     zone_config.zone_id, vpc, self.cluster_name)  # sg_name
