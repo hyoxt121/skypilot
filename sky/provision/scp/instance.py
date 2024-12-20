@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from sky.clouds.utils import scp_utils
 
 
-def open_ports(  # pylint: disable=unused-argument,R0914,W0718,R1702
+def open_ports(  # pylint: disable=unused-argument
     cluster_name_on_cloud: str,
     ports: List[str],
     provider_config: Optional[Dict[str, Any]] = None,
@@ -40,7 +40,7 @@ def open_ports(  # pylint: disable=unused-argument,R0914,W0718,R1702
                             scp_client.wait_firewall_inbound_rule_complete(
                                 firewall_id, rule_id)
                         break
-                    except Exception:
+                    except Exception: # pylint: disable=broad-except
                         attempts += 1
                         time.sleep(10)
                         continue
@@ -56,7 +56,7 @@ def open_ports(  # pylint: disable=unused-argument,R0914,W0718,R1702
                             scp_client.wait_firewall_outbound_rule_complete(
                                 firewall_id, rule_id)
                         break
-                    except Exception:
+                    except Exception: # pylint: disable=broad-except
                         attempts += 1
                         time.sleep(10)
                         continue
