@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from sky.clouds.utils import scp_utils
 
 
-def open_ports(  # pylint: disable=unused-argument
+def open_ports(  # pylint: disable=unused-argument,too-many-locals
     cluster_name_on_cloud: str,
     ports: List[str],
     provider_config: Optional[Dict[str, Any]] = None,
@@ -15,7 +15,7 @@ def open_ports(  # pylint: disable=unused-argument
     scp_client = scp_utils.SCPClient()
     vm_list = scp_client.list_instances()
 
-    for vm in vm_list:
+    for vm in vm_list:  # pylint: disable=too-many-nested-blocks
         vm_info = scp_client.get_virtual_server_info(vm['virtualServerId'])
         sg_id = vm_info['securityGroupIds'][0]['securityGroupId']
         scp_client.add_new_security_group_in_rule(sg_id, ports[0])
@@ -40,7 +40,7 @@ def open_ports(  # pylint: disable=unused-argument
                             scp_client.wait_firewall_inbound_rule_complete(
                                 firewall_id, rule_id)
                         break
-                    except Exception: # pylint: disable=broad-except
+                    except Exception:  # pylint: disable=broad-except
                         attempts += 1
                         time.sleep(10)
                         continue
@@ -56,7 +56,7 @@ def open_ports(  # pylint: disable=unused-argument
                             scp_client.wait_firewall_outbound_rule_complete(
                                 firewall_id, rule_id)
                         break
-                    except Exception: # pylint: disable=broad-except
+                    except Exception:  # pylint: disable=broad-except
                         attempts += 1
                         time.sleep(10)
                         continue
