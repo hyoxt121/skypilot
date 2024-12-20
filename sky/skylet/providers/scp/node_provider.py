@@ -381,7 +381,7 @@ class SCPNodeProvider(NodeProvider):
                     if rule_info['ruleState'] == "ACTIVE":
                         break
                 return rule_id
-            except Exception as e:
+            except Exception:
                 attempts += 1
                 time.sleep(10)
                 continue
@@ -405,7 +405,7 @@ class SCPNodeProvider(NodeProvider):
                     if rule_info['ruleState'] == "ACTIVE":
                         break
                 return rule_id
-            except Exception as e:
+            except Exception:
                 attempts += 1
                 time.sleep(10)
                 continue
@@ -577,7 +577,7 @@ class SCPNodeProvider(NodeProvider):
                             time.sleep(5)
 
                     break
-                except Exception as e:
+                except Exception:
                     time.sleep(10)
                     continue
 
