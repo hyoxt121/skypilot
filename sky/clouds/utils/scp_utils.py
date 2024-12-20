@@ -645,5 +645,5 @@ class SCPClient:
         return self._get(url=url, contents_key=None)
 
     def get_internet_gateway_info(self, internet_gateway_id):
-        url = f'{API_ENDPOINT}/internet-gateway/v2/internet-gateways/{internet_gateway_id}'
+        url = f'{API_ENDPOINT}/internet-gateway/v2/internet-gateways/{internet_gateway_id}'  # pylint: disable=line-too-long
         return self._get(url=url, contents_key=None)
