@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from sky.clouds.utils import scp_utils
 
 
-def open_ports(  # pylint: disable=unused-argument
+def open_ports(  # pylint: disable=unused-argument,R0914,W0718,R1702
     cluster_name_on_cloud: str,
     ports: List[str],
     provider_config: Optional[Dict[str, Any]] = None,
