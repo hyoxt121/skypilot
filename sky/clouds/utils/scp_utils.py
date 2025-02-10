@@ -544,7 +544,7 @@ class SCPClient:
                 'ruleDescription': 'skyserve rule'
             }
             return self._post(url, request_body)
- 
+
     def wait_firewall_inbound_rule_complete(self, firewall_id, rule_id):
         while True:
             time.sleep(5)
