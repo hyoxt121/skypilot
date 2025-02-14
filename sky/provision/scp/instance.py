@@ -6,63 +6,74 @@ from typing import Any, Dict, List, Optional
 from sky.clouds.utils import scp_utils
 
 
-def open_ports(  # pylint: disable=unused-argument,too-many-locals
+def _add_firewall_rule(scp_client: scp_utils.SCPClient,
+                       firewall_list: List[str], vpc_id: str, internal_ip: str,
+                       ports: str) -> None:
+    for firewall in firewall_list:
+        if firewall['vpcId'] == vpc_id:
+            firewall_id = firewall['firewallId']
+
+            attempts = 0
+            max_attempts = 300
+            while attempts < max_attempts:
+                try:
+                    rule_info = scp_client.add_new_firewall_inbound_rule(
+                        firewall_id, internal_ip, ports)
+                    if rule_info is not None:
+                        rule_id = rule_info['resourceId']
+                        scp_client.wait_firewall_inbound_rule_complete(
+                            firewall_id, rule_id)
+                    break
+                except Exception:  # pylint: disable=broad-except
+                    attempts += 1
+                    time.sleep(10)
+                    continue
+
+            attempts = 0
+            max_attempts = 300
+            while attempts < max_attempts:
+                try:
+                    rule_info = scp_client.add_new_firewall_outbound_rule(
+                        firewall_id, internal_ip, ports)
+                    if rule_info is not None:
+                        rule_id = rule_info['resourceId']
+                        scp_client.wait_firewall_outbound_rule_complete(
+                            firewall_id, rule_id)
+                    break
+                except Exception:  # pylint: disable=broad-except
+                    attempts += 1
+                    time.sleep(10)
+                    continue
+
+
+def open_ports(
     cluster_name_on_cloud: str,
     ports: List[str],
     provider_config: Optional[Dict[str, Any]] = None,
 ) -> None:
     """See sky/provision/__init__.py"""
+
+    del cluster_name_on_cloud
+    del provider_config
+
     scp_client = scp_utils.SCPClient()
     vm_list = scp_client.list_instances()
 
-    for vm in vm_list:  # pylint: disable=too-many-nested-blocks
+    for vm in vm_list:
         vm_info = scp_client.get_virtual_server_info(vm['virtualServerId'])
         sg_id = vm_info['securityGroupIds'][0]['securityGroupId']
-        scp_client.add_new_security_group_in_rule(sg_id, ports[0])
-        scp_client.add_new_security_group_out_rule(sg_id, ports[0])
+        scp_client.add_new_security_group_in_rule(sg_id, ports)
+        scp_client.add_new_security_group_out_rule(sg_id, ports)
 
         vpc_id = vm_info['vpcId']
         firewall_list = scp_client.list_firewalls()
         internal_ip = vm_info['ip']
 
-        for firewall in firewall_list:
-            if firewall['vpcId'] == vpc_id:
-                firewall_id = firewall['firewallId']
-
-                attempts = 0
-                max_attempts = 300
-                while attempts < max_attempts:
-                    try:
-                        rule_info = scp_client.add_new_firewall_inbound_rule(
-                            firewall_id, internal_ip, ports[0])
-                        if rule_info is not None:
-                            rule_id = rule_info['resourceId']
-                            scp_client.wait_firewall_inbound_rule_complete(
-                                firewall_id, rule_id)
-                        break
-                    except Exception:  # pylint: disable=broad-except
-                        attempts += 1
-                        time.sleep(10)
-                        continue
-
-                attempts = 0
-                max_attempts = 300
-                while attempts < max_attempts:
-                    try:
-                        rule_info = scp_client.add_new_firewall_outbound_rule(
-                            firewall_id, internal_ip, ports[0])
-                        if rule_info is not None:
-                            rule_id = rule_info['resourceId']
-                            scp_client.wait_firewall_outbound_rule_complete(
-                                firewall_id, rule_id)
-                        break
-                    except Exception:  # pylint: disable=broad-except
-                        attempts += 1
-                        time.sleep(10)
-                        continue
+        _add_firewall_rule(scp_client, firewall_list, vpc_id, internal_ip,
+                           ports)
 
 
-def cleanup_ports(  # pylint: disable=unused-argument, pointless-string-statement
+def cleanup_ports(  # pylint: disable=pointless-string-statement
     cluster_name_on_cloud: str,
     ports: List[str],
     provider_config: Optional[Dict[str, Any]] = None,
@@ -72,3 +83,7 @@ def cleanup_ports(  # pylint: disable=unused-argument, pointless-string-statemen
        in sky/skylet/providers/scp/node_provider.py$terminate_node
        because it cannot be reached for SCP after terminate_node
     """
+
+    del cluster_name_on_cloud
+    del ports
+    del provider_config
