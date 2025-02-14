@@ -45,6 +45,7 @@ from sky.utils import resources_utils
 @pytest.mark.no_scp  # SCP does not have T4 gpus. Run test_scp_job_queue instead
 @pytest.mark.no_paperspace  # Paperspace does not have T4 gpus.
 @pytest.mark.no_oci  # OCI does not have T4 gpus
+@pytest.mark.resource_heavy
 @pytest.mark.parametrize('accelerator', [{'do': 'H100'}])
 def test_job_queue(generic_cloud: str, accelerator: Dict[str, str]):
     accelerator = accelerator.get(generic_cloud, 'T4')
@@ -267,6 +268,7 @@ def test_job_queue_multinode(generic_cloud: str, accelerator: Dict[str, str]):
 @pytest.mark.no_fluidstack  # No FluidStack VM has 8 CPUs
 @pytest.mark.no_lambda_cloud  # No Lambda Cloud VM has 8 CPUs
 @pytest.mark.no_vast  # Vast doesn't guarantee exactly 8 CPUs, only at least.
+@pytest.mark.resource_heavy
 def test_large_job_queue(generic_cloud: str):
     name = smoke_tests_utils.get_cluster_name()
     test = smoke_tests_utils.Test(
@@ -313,6 +315,7 @@ def test_large_job_queue(generic_cloud: str):
 @pytest.mark.no_fluidstack  # No FluidStack VM has 8 CPUs
 @pytest.mark.no_lambda_cloud  # No Lambda Cloud VM has 8 CPUs
 @pytest.mark.no_vast  # No Vast Cloud VM has 8 CPUs
+@pytest.mark.resource_heavy
 def test_fast_large_job_queue(generic_cloud: str):
     # This is to test the jobs can be scheduled quickly when there are many jobs in the queue.
     name = smoke_tests_utils.get_cluster_name()
@@ -401,6 +404,7 @@ def test_docker_preinstalled_package(generic_cloud: str):
 @pytest.mark.no_scp  # SCP does not support num_nodes > 1 yet
 @pytest.mark.no_oci  # OCI Cloud does not have T4 gpus
 @pytest.mark.no_do  # DO does not have T4 gpus
+@pytest.mark.resource_heavy
 def test_multi_echo(generic_cloud: str):
     name = smoke_tests_utils.get_cluster_name()
     test = smoke_tests_utils.Test(
@@ -444,6 +448,7 @@ def test_multi_echo(generic_cloud: str):
 @pytest.mark.no_lambda_cloud  # Lambda Cloud does not have V100 gpus
 @pytest.mark.no_ibm  # IBM cloud currently doesn't provide public image with CUDA
 @pytest.mark.no_scp  # SCP does not have V100 (16GB) GPUs. Run test_scp_huggingface instead.
+@pytest.mark.resource_heavy
 @pytest.mark.parametrize('accelerator', [{'do': 'H100'}])
 def test_huggingface(generic_cloud: str, accelerator: Dict[str, str]):
     accelerator = accelerator.get(generic_cloud, 'T4')
@@ -575,7 +580,6 @@ def test_tpu_vm_pod():
 
 
 # ---------- TPU Pod Slice on GKE. ----------
-@pytest.mark.requires_gke
 @pytest.mark.kubernetes
 @pytest.mark.skip
 def test_tpu_pod_slice_gke():
@@ -695,6 +699,7 @@ def test_azure_http_server_with_custom_ports():
 
 # ---------- Web apps with custom ports on Kubernetes. ----------
 @pytest.mark.kubernetes
+@pytest.mark.resource_heavy
 def test_kubernetes_http_server_with_custom_ports():
     name = smoke_tests_utils.get_cluster_name()
     test = smoke_tests_utils.Test(
@@ -840,14 +845,15 @@ def test_add_pod_annotations_for_autodown_with_launch():
             # Autodown is set.
             f'sky launch -y -c {name} -i 10 --down --num-nodes 2 --cpus=1 --cloud kubernetes',
             # Get names of the pods containing cluster name.
-            f'pod_1=$(kubectl get pods -o name | grep {name} | sed -n 1p)',
-            f'pod_2=$(kubectl get pods -o name | grep {name} | sed -n 2p)',
+            f'pod_1=$(kubectl get pods -o name | grep {name} | sed -n 1p) && '
             # Describe the first pod and check for annotations.
-            'kubectl describe pod $pod_1 | grep -q skypilot.co/autodown',
-            'kubectl describe pod $pod_1 | grep -q skypilot.co/idle_minutes_to_autostop',
+            'pod_tag=$(kubectl describe $pod_1); echo "$pod_tag"; echo "$pod_tag" | grep -q skypilot.co/autodown && '
+            'pod_tag=$(kubectl describe $pod_1); echo "$pod_tag"; echo "$pod_tag" | grep -q skypilot.co/idle_minutes_to_autostop',
+            # Get names of the pods containing cluster name.
+            f'pod_2=$(kubectl get pods -o name | grep {name} | sed -n 2p) && '
             # Describe the second pod and check for annotations.
-            'kubectl describe pod $pod_2 | grep -q skypilot.co/autodown',
-            'kubectl describe pod $pod_2 | grep -q skypilot.co/idle_minutes_to_autostop'
+            'pod_tag=$(kubectl describe $pod_2); echo "$pod_tag"; echo "$pod_tag" | grep -q skypilot.co/autodown && '
+            'pod_tag=$(kubectl describe $pod_2); echo "$pod_tag"; echo "$pod_tag" | grep -q skypilot.co/idle_minutes_to_autostop'
         ],
         f'sky down -y {name}',
     )
@@ -865,22 +871,24 @@ def test_add_and_remove_pod_annotations_with_autostop():
             # Set autodown on the cluster with 'autostop' command.
             f'sky autostop -y {name} -i 20 --down',
             # Get names of the pods containing cluster name.
-            f'pod_1=$(kubectl get pods -o name | grep {name} | sed -n 1p)',
-            f'pod_2=$(kubectl get pods -o name | grep {name} | sed -n 2p)',
+            f'pod_1=$(kubectl get pods -o name | grep {name} | sed -n 1p) && '
             # Describe the first pod and check for annotations.
-            'kubectl describe pod $pod_1 | grep -q skypilot.co/autodown',
-            'kubectl describe pod $pod_1 | grep -q skypilot.co/idle_minutes_to_autostop',
+            'pod_tag=$(kubectl describe $pod_1); echo "$pod_tag"; echo "$pod_tag" | grep -q skypilot.co/autodown && '
+            'pod_tag=$(kubectl describe $pod_1); echo "$pod_tag"; echo "$pod_tag" | grep -q skypilot.co/idle_minutes_to_autostop',
             # Describe the second pod and check for annotations.
-            'kubectl describe pod $pod_2 | grep -q skypilot.co/autodown',
-            'kubectl describe pod $pod_2 | grep -q skypilot.co/idle_minutes_to_autostop',
+            f'pod_2=$(kubectl get pods -o name | grep {name} | sed -n 2p) && '
+            'pod_tag=$(kubectl describe $pod_2); echo "$pod_tag"; echo "$pod_tag" | grep -q skypilot.co/autodown && '
+            'pod_tag=$(kubectl describe $pod_2); echo "$pod_tag"; echo "$pod_tag" | grep -q skypilot.co/idle_minutes_to_autostop',
             # Cancel the set autodown to remove the annotations from the pods.
             f'sky autostop -y {name} --cancel',
             # Describe the first pod and check if annotations are removed.
-            '! kubectl describe pod $pod_1 | grep -q skypilot.co/autodown',
-            '! kubectl describe pod $pod_1 | grep -q skypilot.co/idle_minutes_to_autostop',
+            f'pod_1=$(kubectl get pods -o name | grep {name} | sed -n 1p) && '
+            'pod_tag=$(kubectl describe $pod_1); echo "$pod_tag"; ! echo "$pod_tag" | grep -q skypilot.co/autodown && '
+            'pod_tag=$(kubectl describe $pod_1); echo "$pod_tag"; ! echo "$pod_tag" | grep -q skypilot.co/idle_minutes_to_autostop',
             # Describe the second pod and check if annotations are removed.
-            '! kubectl describe pod $pod_2 | grep -q skypilot.co/autodown',
-            '! kubectl describe pod $pod_2 | grep -q skypilot.co/idle_minutes_to_autostop',
+            f'pod_2=$(kubectl get pods -o name | grep {name} | sed -n 2p) && '
+            'pod_tag=$(kubectl describe $pod_2); echo "$pod_tag"; ! echo "$pod_tag" | grep -q skypilot.co/autodown && '
+            'pod_tag=$(kubectl describe $pod_2); echo "$pod_tag"; ! echo "$pod_tag" | grep -q skypilot.co/idle_minutes_to_autostop',
         ],
         f'sky down -y {name}',
     )
@@ -888,7 +896,7 @@ def test_add_and_remove_pod_annotations_with_autostop():
 
 
 # ---------- Container logs from task on Kubernetes ----------
-@pytest.mark.requires_gke
+@pytest.mark.resource_heavy
 @pytest.mark.kubernetes
 def test_container_logs_multinode_kubernetes():
     name = smoke_tests_utils.get_cluster_name()
@@ -1256,6 +1264,7 @@ def test_cancel_azure():
 @pytest.mark.no_paperspace  # Paperspace has `gnome-shell` on nvidia-smi
 @pytest.mark.no_scp  # SCP does not support num_nodes > 1 yet
 @pytest.mark.no_vast  # Vast does not support num_nodes > 1 yet
+@pytest.mark.resource_heavy
 @pytest.mark.parametrize('accelerator', [{'do': 'H100'}])
 def test_cancel_pytorch(generic_cloud: str, accelerator: Dict[str, str]):
     accelerator = accelerator.get(generic_cloud, 'T4')
@@ -1445,7 +1454,7 @@ def test_aws_custom_image():
     smoke_tests_utils.run_one_test(test)
 
 
-@pytest.mark.requires_gke
+@pytest.mark.resource_heavy
 @pytest.mark.kubernetes
 @pytest.mark.parametrize(
     'image_id',
