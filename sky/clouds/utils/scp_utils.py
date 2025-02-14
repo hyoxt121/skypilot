@@ -410,7 +410,7 @@ class SCPClient:
             parameter.append('vpcId=' + vpc_id)
         if sg_name is not None:
             parameter.append('securityGroupName=' + sg_name)
-        if parameter:
+        if len(parameter) > 0:
             url = url + '?' + '&'.join(parameter)
         return self._get(url)
 
@@ -447,7 +447,7 @@ class SCPClient:
         url = f'{API_ENDPOINT}/security-group/v2/security-groups/{sg_id}/rules'
         return self._get(url)
 
-    def _check_existing_security_group_rule(self, sg_id, direction, port):
+    def _check_existing_security_group_rule(self, sg_id, direction, ports):
         response = self.list_security_group_rules(sg_id)
         rules = []
         for rule in response:
@@ -455,34 +455,35 @@ class SCPClient:
             if rule_direction == direction:
                 rules.append(rule)
         for rule in rules:
-            port_list = rule['tcpServices']
-            if port in port_list:
+            port_list = ','.join(rule['tcpServices'])
+            port = ','.join(ports)
+            if port == port_list:
                 return False
         return True
 
-    def add_new_security_group_in_rule(self, sg_id, port):
-        if self._check_existing_security_group_rule(sg_id, 'IN', port):
+    def add_new_security_group_in_rule(self, sg_id, ports):
+        if self._check_existing_security_group_rule(sg_id, 'IN', ports):
             url = f'{API_ENDPOINT}/security-group/v2/security-groups/{sg_id}/rules'  # pylint: disable=line-too-long
+            services = []
+            for port in ports:
+                services.append({'serviceType': 'TCP', 'serviceValue': port})
             request_body = {
                 'ruleDirection': 'IN',
-                'services': [{
-                    'serviceType': 'TCP',
-                    'serviceValue': port
-                }],
+                'services': services,
                 'sourceIpAddresses': ['0.0.0.0/0'],
                 'ruleDescription': 'skyserve rule'
             }
             return self._post(url, request_body)
 
-    def add_new_security_group_out_rule(self, sg_id, port):
-        if self._check_existing_security_group_rule(sg_id, 'OUT', port):
+    def add_new_security_group_out_rule(self, sg_id, ports):
+        if self._check_existing_security_group_rule(sg_id, 'OUT', ports):
             url = f'{API_ENDPOINT}/security-group/v2/security-groups/{sg_id}/rules'  # pylint: disable=line-too-long
+            services = []
+            for port in ports:
+                services.append({'serviceType': 'TCP', 'serviceValue': port})
             request_body = {
                 'ruleDirection': 'OUT',
-                'services': [{
-                    'serviceType': 'TCP',
-                    'serviceValue': port
-                }],
+                'services': services,
                 'destinationIpAddresses': ['0.0.0.0/0'],
                 'ruleDescription': 'skyserve rule'
             }
@@ -493,31 +494,32 @@ class SCPClient:
         return self._get(url)
 
     def _check_existing_firewall_rule(self, firewall_id, internal_ip, direction,
-                                      port):
+                                      ports):
         response = self.list_firewall_rules(firewall_id)
-        rule_list = []
+        rules = []
         for rule in response:
             rule_direction = rule['ruleDirection']
             if rule_direction == direction and internal_ip == rule[
                     'destinationIpAddresses'][0]:
-                rule_list.append(rule)
-        for rule in rule_list:
-            port_list = rule['tcpServices']
-            if port in port_list:
+                rules.append(rule)
+        for rule in rules:
+            port_list = ','.join(rule['tcpServices'])
+            port = ','.join(ports)
+            if port == port_list:
                 return False
         return True
 
-    def add_new_firewall_inbound_rule(self, firewall_id, internal_ip, port):
+    def add_new_firewall_inbound_rule(self, firewall_id, internal_ip, ports):
         if self._check_existing_firewall_rule(firewall_id, internal_ip, 'IN',
-                                              port):
+                                              ports):
             url = f'{API_ENDPOINT}/firewall/v2/firewalls/{firewall_id}/rules'
+            services = []
+            for port in ports:
+                services.append({'serviceType': 'TCP', 'serviceValue': port})
             request_body = {
                 'sourceIpAddresses': ['0.0.0.0/0'],
                 'destinationIpAddresses': [internal_ip],
-                'services': [{
-                    'serviceType': 'TCP',
-                    'serviceValue': port
-                }],
+                'services': services,
                 'ruleDirection': 'IN',
                 'ruleAction': 'ALLOW',
                 'isRuleEnabled': True,
@@ -526,17 +528,17 @@ class SCPClient:
             }
             return self._post(url, request_body)
 
-    def add_new_firewall_outbound_rule(self, firewall_id, internal_ip, port):
+    def add_new_firewall_outbound_rule(self, firewall_id, internal_ip, ports):
         if self._check_existing_firewall_rule(firewall_id, internal_ip, 'OUT',
-                                              port):
+                                              ports):
             url = f'{API_ENDPOINT}/firewall/v2/firewalls/{firewall_id}/rules'
+            services = []
+            for port in ports:
+                services.append({'serviceType': 'TCP', 'serviceValue': port})
             request_body = {
                 'sourceIpAddresses': [internal_ip],
                 'destinationIpAddresses': ['0.0.0.0/0'],
-                'services': [{
-                    'serviceType': 'TCP',
-                    'serviceValue': port
-                }],
+                'services': services,
                 'ruleDirection': 'OUT',
                 'ruleAction': 'ALLOW',
                 'isRuleEnabled': True,
