@@ -7,8 +7,8 @@ from sky.clouds.utils import scp_utils
 
 
 def _add_firewall_rule(scp_client: scp_utils.SCPClient,
-                       firewall_list: List[str], vpc_id: str, internal_ip: str,
-                       ports: str) -> None:
+                       firewall_list: Union[SupportsIndex, slice], vpc_id: str,
+                       internal_ip: str, ports: List[str]) -> None:
     for firewall in firewall_list:
         if firewall['vpcId'] == vpc_id:
             firewall_id = firewall['firewallId']
