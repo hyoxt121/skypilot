@@ -1,7 +1,7 @@
 """SCP instance provisioning."""
 
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union, SupportsIndex
 
 from sky.clouds.utils import scp_utils
 
