@@ -1,14 +1,16 @@
 """SCP instance provisioning."""
 
 import time
-from typing import Any, Dict, List, Optional, Union, SupportsIndex
+from typing import Any, Dict, List, Optional
 
 from sky.clouds.utils import scp_utils
 
 
-def _add_firewall_rule(scp_client: scp_utils.SCPClient,
-                       firewall_list: Union[SupportsIndex, slice], vpc_id: str,
+def _add_firewall_rule(scp_client: scp_utils.SCPClient, vpc_id: str,
                        internal_ip: str, ports: List[str]) -> None:
+
+    firewall_list = scp_client.list_firewalls()
+
     for firewall in firewall_list:
         if firewall['vpcId'] == vpc_id:
             firewall_id = firewall['firewallId']
@@ -66,11 +68,8 @@ def open_ports(
         scp_client.add_new_security_group_out_rule(sg_id, ports)
 
         vpc_id = vm_info['vpcId']
-        firewall_list = scp_client.list_firewalls()
         internal_ip = vm_info['ip']
-
-        _add_firewall_rule(scp_client, firewall_list, vpc_id, internal_ip,
-                           ports)
+        _add_firewall_rule(scp_client, vpc_id, internal_ip, ports)
 
 
 def cleanup_ports(  # pylint: disable=pointless-string-statement
