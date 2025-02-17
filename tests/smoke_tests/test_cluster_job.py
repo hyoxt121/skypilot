@@ -758,7 +758,7 @@ def test_scp_http_server_with_custom_ports():
         ],
         f'sky down -y {name}',
     )
-    )moke_tests_utils.run_one_test(test)
+    smoke_tests_utils.run_one_test(test)
 
 
 # ---------- Labels from task on AWS (instance_tags) ----------
