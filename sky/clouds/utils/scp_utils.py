@@ -534,11 +534,17 @@ class SCPClient:
             return self._post(url, request_body)
 
     def wait_firewall_rule_complete(self, firewall_id, rule_id):
-        while True:
-            time.sleep(5)
-            rule_info = self.get_firewall_rule_info(firewall_id, rule_id)
-            if rule_info['ruleState'] == 'ACTIVE':
-                break
+        attempts = 0
+        max_attempts = 300
+        while attempts < max_attempts:
+            try:
+                time.sleep(5)
+                rule_info = self.get_firewall_rule_info(firewall_id, rule_id)
+                if rule_info['ruleState'] == 'ACTIVE':
+                    break
+            except Exception:  # pylint: disable=broad-except
+                attempts += 1
+                continue
         return
 
     def get_virtual_server_info(self, vm_id):
