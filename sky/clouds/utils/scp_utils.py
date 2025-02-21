@@ -549,10 +549,6 @@ class SCPClient:
         vpc_name = 'skyvpc' + zone_id[5:10]
         request_body = {
             'serviceZoneId': zone_id,
-            'tags': [{
-                'tagKey': 'tagKey',
-                'tagValue': 'tagValue'
-            }],
             'vpcName': vpc_name,
             'vpcDescription': 'sky vpc'
         }
@@ -565,10 +561,6 @@ class SCPClient:
             'subnetCidrBlock': '192.168.0.0/24',
             'subnetName': subnet_name,
             'subnetType': 'PUBLIC',
-            'tags': [{
-                'tagKey': 'tagKey',
-                'tagValue': 'tagValue'
-            }],
             'vpcId': vpc_id,
             'subnetDescription': 'sky subnet'
         }
@@ -580,10 +572,6 @@ class SCPClient:
             'firewallEnabled': True,
             'firewallLoggable': False,
             'internetGatewayType': 'SHARED',
-            'tags': [{
-                'tagKey': 'tagKey',
-                'tagValue': 'tagValue'
-            }],
             'vpcId': vpc_id,
             'internetGatewayDescription': 'sky internet gateway'
         }
