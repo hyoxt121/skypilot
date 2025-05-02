@@ -361,6 +361,6 @@ class SCP(clouds.Cloud):
     @classmethod
     def query_status(cls, name: str, tag_filters: Dict[str, str],
                      region: Optional[str], zone: Optional[str],
-                     **kwargs) -> List[status_lib.ClusterStatus]:
+                     **kwargs) -> None:
         # TODO: deprecate this method
         assert False, 'This code path should not be used.'
