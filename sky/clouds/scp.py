@@ -10,9 +10,10 @@ from typing import Dict, Iterator, List, Optional, Tuple, Union
 from sky import clouds
 from sky import exceptions
 from sky import sky_logging
-from sky import status_lib
 from sky.clouds import service_catalog
+from sky.utils import registry
 from sky.utils import resources_utils
+from sky.utils import status_lib
 from sky.provision.scp import utils
 
 if typing.TYPE_CHECKING:
@@ -29,7 +30,7 @@ _SCP_MIN_DISK_SIZE_GB = 100
 _SCP_MAX_DISK_SIZE_GB = 300
 
 
-@clouds.CLOUD_REGISTRY.register
+@registry.CLOUD_REGISTRY.register
 class SCP(clouds.Cloud):
     """SCP Cloud."""
 
@@ -146,10 +147,10 @@ class SCP(clouds.Cloud):
 
     @classmethod
     def get_default_instance_type(
-            cls,
-            cpus: Optional[str] = None,
-            memory: Optional[str] = None,
-            disk_tier: Optional[resources_utils.DiskTier] = None
+        cls,
+        cpus: Optional[str] = None,
+        memory: Optional[str] = None,
+        disk_tier: Optional['resources_utils.DiskTier'] = None
     ) -> Optional[str]:
         return service_catalog.get_default_instance_type(cpus=cpus,
                                                          memory=memory,
@@ -179,7 +180,7 @@ class SCP(clouds.Cloud):
     def make_deploy_resources_variables(
             self,
             resources: 'resources_lib.Resources',
-            cluster_name: resources_utils.ClusterName,
+            cluster_name: 'resources_utils.ClusterName',
             region: 'clouds.Region',
             zones: Optional[List['clouds.Zone']],
             num_nodes: int,
@@ -312,7 +313,9 @@ class SCP(clouds.Cloud):
                                                  fuzzy_candidate_list, None)
 
     @classmethod
-    def check_credentials(cls) -> Tuple[bool, Optional[str]]:
+    def _check_compute_credentials(cls) -> Tuple[bool, Optional[str]]:
+        """Checks if the user has access credentials to
+        SCP's compute service."""
         try:
             utils.SCPClient().get_instances()
         except (AssertionError, KeyError, utils.SCPClientError,
@@ -361,6 +364,7 @@ class SCP(clouds.Cloud):
     @classmethod
     def query_status(cls, name: str, tag_filters: Dict[str, str],
                      region: Optional[str], zone: Optional[str],
-                     **kwargs) -> None:
+                     **kwargs) -> List[status_lib.ClusterStatus]:
+        del tag_filters, region, zone, kwargs  # Unused.
         # TODO: deprecate this method
         assert False, 'This code path should not be used.'
