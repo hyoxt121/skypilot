@@ -4,7 +4,7 @@ import logging
 import time
 from typing import Any, Dict, List, Optional
 
-from sky import status_lib
+from sky.utils import status_lib
 from sky.provision.scp import utils
 from sky.provision import common
 
