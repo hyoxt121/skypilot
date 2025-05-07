@@ -1,9 +1,10 @@
 """SCP instance provisioning."""
 
 import logging
+import random
+import string
 import time
 from typing import Any, Dict, List, Optional
-
 from sky.utils import status_lib
 from sky.provision.scp import utils
 from sky.provision import common
@@ -45,7 +46,7 @@ def run_instances(region: str, cluster_name_on_cloud: str,
         client.start_instance(head_instance_id)
         while True:
             instance_info = client.get_virtual_server_info(head_instance_id)
-            if instance_info["virtualServerState"] == 'RUNNING':
+            if instance_info['virtualServerState'] == 'RUNNING':
                 break
             time.sleep(2)
         resumed_instance_ids = [head_instance_id]
@@ -74,7 +75,7 @@ def run_instances(region: str, cluster_name_on_cloud: str,
                 instance_id = _create_instance_sequence(vpc, instance_config)
                 if instance_id is not None:
                     break
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             _delete_security_group(sg_id)
             logger.error(f'run_instances error: {e}')
             continue
@@ -138,7 +139,7 @@ def _get_or_create_vpc_subnets(zone_id):
                     time.sleep(5)
 
             break
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             time.sleep(10)
             logger.error(f'vpc creation error: {e}')
             continue
@@ -202,8 +203,6 @@ def _get_vcp_subnets(zone_id):
 
 
 def _config_security_group(zone_id, vpc, cluster_name):
-    import random
-    import string
     sg_name = ''.join(random.choices(string.ascii_lowercase, k=8))
 
     undo_func_stack = []
@@ -214,9 +213,9 @@ def _config_security_group(zone_id, vpc, cluster_name):
         while True:
             sg_contents = client.get_security_groups(vpc, sg_name)
             sg = [
-                sg["securityGroupState"]
+                sg['securityGroupState']
                 for sg in sg_contents
-                if sg["securityGroupId"] == sg_id
+                if sg['securityGroupId'] == sg_id
             ]
             if sg and sg[0] == 'ACTIVE':
                 break
@@ -226,7 +225,7 @@ def _config_security_group(zone_id, vpc, cluster_name):
         client.add_security_group_out_rule(sg_id)
 
         return sg_id
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         _undo_funcs(undo_func_stack)
         logger.error(f'security group creation error: {e}')
         return None
@@ -266,7 +265,7 @@ def _create_instance_sequence(vpc, instance_config):
             lambda: _delete_firewall_rules(firewall_id, out_rule_id))
         return instance_id
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         logger.error(f'instance creation error: {e}')
         _undo_funcs(undo_func_stack)
         return None
@@ -297,7 +296,7 @@ def _delete_firewall_rules(firewall_id, rule_ids):
             client.delete_firewall_rules(firewall_id, rule_ids)
             if _exist_firewall_rule(firewall_id, rule_ids) is False:
                 break
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             attempts += 1
             time.sleep(5)
             logger.error(f'delete firewall rule error: {e}')
@@ -340,7 +339,7 @@ def _add_firewall_inbound(firewall_id, internal_ip):
                 if rule_info['ruleState'] == 'ACTIVE':
                     break
             return rule_id
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             attempts += 1
             time.sleep(10)
             logger.error(f'add firewall inbound rule error: {e}')
@@ -363,7 +362,7 @@ def _add_firewall_outbound(firewall_id, internal_ip):
                 if rule_info['ruleState'] == 'ACTIVE':
                     break
             return rule_id
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             attempts += 1
             time.sleep(10)
             logger.error(f'add firewall outbound rule error: {e}')
@@ -422,7 +421,7 @@ def terminate_instances(
                 _delete_firewall_rules(firewall_id, rule_ids)
                 _delete_instance(instance_id)
                 _delete_security_group(sg_id)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 logger.error(f'terminate_instances error: {e}')
 
 
