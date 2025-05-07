@@ -1086,7 +1086,8 @@ class FailoverCloudErrorHandlerV2:
                      launchable_resources: 'resources_lib.Resources',
                      region: 'clouds.Region',
                      zones: Optional[List['clouds.Zone']],
-                     error: Exception) -> None:        logger.info(f'SCP handler error: {error}')
+                     error: Exception) -> None:
+        logger.info(f'SCP handler error: {error}')
         # Block SCP if the credential has expired.
         if isinstance(error, exceptions.InvalidCloudCredentials):
             _add_to_blocked_resources(
