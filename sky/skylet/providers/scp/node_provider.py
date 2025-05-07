@@ -431,6 +431,8 @@ class SCPNodeProvider(NodeProvider):
         config_tags.update(tags)
         config_tags[TAG_RAY_CLUSTER_NAME] = self.cluster_name
 
+        print("test")
+
         if self.cache_stopped_nodes:
             VALIDITY_TAGS = [
                 TAG_RAY_CLUSTER_NAME,
