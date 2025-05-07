@@ -419,11 +419,11 @@ class SCPClient:
         return [content['serviceZoneName'] for content in zone_contents]
 
     def start_instance(self, instance_id):
-        url = f'{API_ENDPOINT}/virtual-server/v2/virtual-servers/{instance_id}/start'
+        url = f'{API_ENDPOINT}/virtual-server/v2/virtual-servers/{instance_id}/start'  # pylint: disable=line-too-long
         return self._post(url=url, request_body={})
 
     def stop_instance(self, instance_id):
-        url = f'{API_ENDPOINT}/virtual-server/v2/virtual-servers/{instance_id}/stop'
+        url = f'{API_ENDPOINT}/virtual-server/v2/virtual-servers/{instance_id}/stop'  # pylint: disable=line-too-long
         return self._post(url=url, request_body={})
 
     def get_security_group_rules(self, sg_id):
