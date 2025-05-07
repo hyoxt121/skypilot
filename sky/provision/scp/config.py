@@ -1,6 +1,7 @@
 """SCP configuration bootstrapping."""
 
 import subprocess
+
 from sky.provision import common
 from sky.provision.scp import utils
 
