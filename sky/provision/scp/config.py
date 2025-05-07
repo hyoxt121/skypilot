@@ -82,7 +82,7 @@ def _get_vm_init_script(ssh_public_key: str):
 def _get_ssh_key_gen_cmd(ssh_public_key: str):
     cmd_st = 'mkdir -p ~/.ssh/; touch ~/.ssh/authorized_keys;'
     cmd_ed = 'chmod 644 ~/.ssh/authorized_keys; chmod 700 ~/.ssh/'
-    cmd = 'echo ' + ssh_public_key + ' &>>~/.ssh/authorized_keys;'
+    cmd = "echo '{}' &>>~/.ssh/authorized_keys;".format(ssh_public_key)  # pylint: disable=inconsistent-quotes
     return cmd_st + cmd + cmd_ed
 
 
