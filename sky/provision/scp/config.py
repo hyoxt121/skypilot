@@ -1,8 +1,8 @@
 """SCP configuration bootstrapping."""
 
 import subprocess
-from sky.provision.scp import utils
 from sky.provision import common
+from sky.provision.scp import utils
 
 client = utils.SCPClient()
 
