@@ -11,7 +11,7 @@ from sky import clouds
 from sky import exceptions
 from sky import sky_logging
 from sky.clouds import service_catalog
-from sky.clouds.utils import scp_utils
+from sky.provision.scp import utils
 from sky.utils import registry
 from sky.utils import resources_utils
 from sky.utils import status_lib
@@ -368,3 +368,4 @@ class SCP(clouds.Cloud):
         del tag_filters, region, zone, kwargs  # Unused.
         # TODO: deprecate this method
         assert False, 'This code path should not be used.'
+    
