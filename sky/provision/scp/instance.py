@@ -7,11 +7,11 @@ import time
 from typing import Any, Dict, List, Optional
 
 from sky.provision import common
-from sky.provision.scp import utils
+from sky.clouds.utils import scp_utils
 from sky.utils import status_lib
 
 logger = logging.getLogger(__name__)
-client = utils.SCPClient()
+client = scp_utils.SCPClient()
 
 
 def run_instances(region: str, cluster_name_on_cloud: str,
