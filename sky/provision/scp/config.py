@@ -3,9 +3,9 @@
 import subprocess
 
 from sky.provision import common
-from sky.clouds.utils import scp_utils
+from sky.provision.scp import utils
 
-client = scp_utils.SCPClient()
+client = utils.SCPClient()
 
 
 def bootstrap_instances(
