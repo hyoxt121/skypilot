@@ -1081,13 +1081,12 @@ class FailoverCloudErrorHandlerV2:
             FailoverCloudErrorHandlerV2._default_handler(
                 blocked_resources, launchable_resources, region, zones, error)
 
-    @staticmethod
+    @staticmethod               
     def _scp_handler(blocked_resources: Set['resources_lib.Resources'],
                      launchable_resources: 'resources_lib.Resources',
                      region: 'clouds.Region',
                      zones: Optional[List['clouds.Zone']],
-                     error: Exception) -> None:
-        logger.info(f'SCP handler error: {error}')
+                     error: Exception) -> None:        logger.info(f'SCP handler error: {error}')
         # Block SCP if the credential has expired.
         if isinstance(error, exceptions.InvalidCloudCredentials):
             _add_to_blocked_resources(
@@ -1095,7 +1094,7 @@ class FailoverCloudErrorHandlerV2:
         else:
             FailoverCloudErrorHandlerV2._default_handler(
                 blocked_resources, launchable_resources, region, zones, error)
-  
+
     @staticmethod
     def _default_handler(blocked_resources: Set['resources_lib.Resources'],
                          launchable_resources: 'resources_lib.Resources',
