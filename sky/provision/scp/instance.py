@@ -16,6 +16,48 @@ def run_instances(region: str, cluster_name_on_cloud: str,
                   config: common.ProvisionConfig) -> common.ProvisionRecord:
 
     zone_id = config.node_config['zone_id']
+    running_instances = _filter_instances(cluster_name_on_cloud, ['RUNNING'])
+    head_instance_id = _get_head_instance_id(running_instances)
+
+    to_start_count = config.count - len(running_instances)
+    if to_start_count < 0:
+        raise RuntimeError(
+            f'Cluster {cluster_name_on_cloud} already has '
+            f'{len(running_instances)} nodes, but {config.count} are required.')
+
+    if to_start_count == 0:
+        if head_instance_id is None:
+            raise RuntimeError(
+                f'Cluster {cluster_name_on_cloud} has no head node.')
+        logger.info(f'Cluster {cluster_name_on_cloud} already has '
+                    f'{len(running_instances)} nodes, no need to start more.')
+        return common.ProvisionRecord(provider_name='scp',
+                                      cluster_name=cluster_name_on_cloud,
+                                      region=region,
+                                      zone=None,
+                                      head_instance_id=head_instance_id,
+                                      resumed_instance_ids=[],
+                                      created_instance_ids=[])
+
+    stopped_instances = _filter_instances(cluster_name_on_cloud, ['STOPPED'])
+    if to_start_count <= len(stopped_instances):
+        head_instance_id = _get_head_instance_id(stopped_instances)
+        client.start_instance(head_instance_id)
+        while True:
+            instance_info = client.get_virtual_server_info(head_instance_id)
+            if instance_info["virtualServerState"] == 'RUNNING':
+                break
+            time.sleep(2)
+        resumed_instance_ids = [head_instance_id]
+        return common.ProvisionRecord(provider_name='scp',
+                                      cluster_name=cluster_name_on_cloud,
+                                      region=region,
+                                      zone=None,
+                                      head_instance_id=head_instance_id,
+                                      resumed_instance_ids=resumed_instance_ids,
+                                      created_instance_ids=[])
+
+    # SCP does not support multi-node
     instance_config = config.docker_config
     instance_config['virtualServerName'] = cluster_name_on_cloud
 
@@ -40,7 +82,9 @@ def run_instances(region: str, cluster_name_on_cloud: str,
     if instance_id is None:
         raise RuntimeError('instance creation error')
 
-    head_instance_id = instance_id
+    if head_instance_id is None:
+        head_instance_id = instance_id
+
     created_instance_ids = [instance_id]
 
     return common.ProvisionRecord(provider_name='scp',
@@ -158,9 +202,9 @@ def _get_vcp_subnets(zone_id):
 
 
 def _config_security_group(zone_id, vpc, cluster_name):
-    sg_name = cluster_name.replace("-", "") + "sg"
-    if len(sg_name) > 20:
-        sg_name = sg_name[:9] + '0' + sg_name[-10:]  # should be less than 21
+    import random
+    import string
+    sg_name = ''.join(random.choices(string.ascii_lowercase, k=8))
 
     undo_func_stack = []
     try:
