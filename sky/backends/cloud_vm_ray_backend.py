@@ -1081,7 +1081,6 @@ class FailoverCloudErrorHandlerV2:
             FailoverCloudErrorHandlerV2._default_handler(
                 blocked_resources, launchable_resources, region, zones, error)
 
-
     @staticmethod
     def _scp_handler(blocked_resources: Set['resources_lib.Resources'],
                      launchable_resources: 'resources_lib.Resources',
