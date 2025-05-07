@@ -203,6 +203,7 @@ def _get_vcp_subnets(zone_id):
 
 
 def _config_security_group(zone_id, vpc, cluster_name):
+    del cluster_name
     sg_name = ''.join(random.choices(string.ascii_lowercase, k=8))
 
     undo_func_stack = []
@@ -463,6 +464,7 @@ def get_cluster_info(
         region: str,
         cluster_name_on_cloud: str,
         provider_config: Optional[Dict[str, Any]] = None) -> common.ClusterInfo:
+    del region
 
     running_instances = _filter_instances(cluster_name_on_cloud, ['RUNNING'])
     head_instance_id = _get_head_instance_id(running_instances)
