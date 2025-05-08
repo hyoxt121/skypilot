@@ -1,5 +1,6 @@
 """SCP configuration bootstrapping."""
 
+import subprocess
 from requests import auth
 
 from sky.clouds.utils import scp_utils
