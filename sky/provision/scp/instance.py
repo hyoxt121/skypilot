@@ -585,4 +585,3 @@ def _get_firewall_rule_ids(instance_info, firewall_id,
                     'destinationIpAddresses'][0]:
                 rule_ids.append(rule['ruleId'])
     return rule_ids
-(sky) ubuntu@ip-172-31-9-178:~/skypilot/sky/provision/scp$ 
