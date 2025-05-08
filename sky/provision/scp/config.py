@@ -2,10 +2,8 @@
 
 from requests import auth
 
-from sky.provision.scp import utils
+from sky.clouds.utils import scp_utils
 from sky.provision import common
-
-client = utils.SCPClient()
 
 
 def bootstrap_instances(
@@ -54,7 +52,7 @@ def bootstrap_instances(
 
 
 def _get_zone_id(region_name: str):
-    zone_contents = client.get_zones()
+    zone_contents = scp_utils.SCPClient().get_zones()
     zone_dict = {
         item['serviceZoneName']: item['serviceZoneId'] for item in zone_contents
     }
