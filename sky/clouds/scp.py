@@ -11,10 +11,10 @@ from sky import clouds
 from sky import exceptions
 from sky import sky_logging
 from sky.clouds import service_catalog
-from sky.clouds.utils import scp_utils
 from sky.utils import registry
 from sky.utils import resources_utils
 from sky.utils import status_lib
+from sky.provision.scp import utils
 
 if typing.TYPE_CHECKING:
     # Renaming to avoid shadowing variables.
@@ -62,7 +62,7 @@ class SCP(clouds.Cloud):
 
     PROVISIONER_VERSION = clouds.ProvisionerVersion.SKYPILOT
     STATUS_VERSION = clouds.StatusVersion.SKYPILOT
-    
+
     @classmethod
     def _unsupported_features_for_resources(
         cls, resources: 'resources_lib.Resources'
@@ -317,9 +317,9 @@ class SCP(clouds.Cloud):
         """Checks if the user has access credentials to
         SCP's compute service."""
         try:
-            scp_utils.SCPClient().get_instances()
-        except (AssertionError, KeyError, scp_utils.SCPClientError,
-                scp_utils.SCPCreationFailError):
+            utils.SCPClient().get_instances()
+        except (AssertionError, KeyError, utils.SCPClientError,
+                utils.SCPCreationFailError):
             return False, (
                 'Failed to access SCP with credentials. '
                 'To configure credentials, see: '
