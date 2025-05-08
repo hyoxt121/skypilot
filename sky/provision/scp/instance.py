@@ -380,8 +380,7 @@ def _create_instance(instance_config):
     instance_id = response.get('resourceId', None)
     while True:
         time.sleep(10)
-        instance_info = scp_utils.SCPClient().get_instance_info(
-            instance_id)
+        instance_info = scp_utils.SCPClient().get_instance_info(instance_id)
         if instance_info['virtualServerState'] == 'RUNNING':
             break
     return instance_id, instance_info['ip']
