@@ -480,7 +480,7 @@ def get_cluster_info(
         cluster_name_on_cloud: str,
         provider_config: Optional[Dict[str, Any]] = None) -> common.ClusterInfo:
     del region
-
+    client = utils.SCPClient()
     running_instances = _filter_instances(cluster_name_on_cloud, ['RUNNING'])
     head_instance_id = _get_head_instance_id(running_instances)
 
