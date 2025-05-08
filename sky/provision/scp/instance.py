@@ -45,7 +45,8 @@ def run_instances(region: str, cluster_name_on_cloud: str,
         head_instance_id = _get_head_instance_id(stopped_instances)
         scp_utils.SCPClient().start_instance(head_instance_id)
         while True:
-            instance_info = scp_utils.SCPClient().get_virtual_server_info(head_instance_id)
+            instance_info = scp_utils.SCPClient().get_virtual_server_info(
+                head_instance_id)
             if instance_info['virtualServerState'] == 'RUNNING':
                 break
             time.sleep(2)
@@ -124,8 +125,8 @@ def _get_or_create_vpc_subnets(zone_id):
             time.sleep(5)
             internet_gateway_id = response['resourceId']
             while True:
-                internet_gateway_info = scp_utils.SCPClient().get_internet_gateway_info(
-                    internet_gateway_id)
+                internet_gateway_info = scp_utils.SCPClient(
+                ).get_internet_gateway_info(internet_gateway_id)
                 if internet_gateway_info['internetGatewayState'] == 'ATTACHED':
                     break
                 else:
@@ -207,11 +208,13 @@ def _config_security_group(zone_id, vpc):
 
     undo_func_stack = []
     try:
-        response = scp_utils.SCPClient().create_security_group(zone_id, vpc, sg_name)
+        response = scp_utils.SCPClient().create_security_group(
+            zone_id, vpc, sg_name)
         sg_id = response['resourceId']
         undo_func_stack.append(lambda: _delete_security_group(sg_id))
         while True:
-            sg_contents = scp_utils.SCPClient().get_security_groups(vpc, sg_name)
+            sg_contents = scp_utils.SCPClient().get_security_groups(
+                vpc, sg_name)
             sg = [
                 sg['securityGroupState']
                 for sg in sg_contents
@@ -335,7 +338,8 @@ def _add_firewall_inbound(firewall_id, internal_ip):
             rule_id = rule_info['resourceId']
             while True:
                 time.sleep(5)
-                rule_info = scp_utils.SCPClient().get_firewall_rule_info(firewall_id, rule_id)
+                rule_info = scp_utils.SCPClient().get_firewall_rule_info(
+                    firewall_id, rule_id)
                 if rule_info['ruleState'] == 'ACTIVE':
                     break
             return rule_id
@@ -358,7 +362,8 @@ def _add_firewall_outbound(firewall_id, internal_ip):
             rule_id = rule_info['resourceId']
             while True:
                 time.sleep(5)
-                rule_info = scp_utils.SCPClient().get_firewall_rule_info(firewall_id, rule_id)
+                rule_info = scp_utils.SCPClient().get_firewall_rule_info(
+                    firewall_id, rule_id)
                 if rule_info['ruleState'] == 'ACTIVE':
                     break
             return rule_id
@@ -375,7 +380,8 @@ def _create_instance(instance_config):
     instance_id = response.get('resourceId', None)
     while True:
         time.sleep(10)
-        instance_info = scp_utils.SCPClient().get_virtual_server_info(instance_id)
+        instance_info = scp_utils.SCPClient().get_virtual_server_info(
+            instance_id)
         if instance_info['virtualServerState'] == 'RUNNING':
             break
     return instance_id, instance_info['ip']
@@ -394,7 +400,8 @@ def stop_instances(
             instance_id = instance['virtualServerId']
             scp_utils.SCPClient().stop_instance(instance_id)
             while True:
-                instance_info = scp_utils.SCPClient().get_virtual_server_info(instance_id)
+                instance_info = scp_utils.SCPClient().get_virtual_server_info(
+                    instance_id)
                 time.sleep(2)
                 if instance_info['virtualServerState'] == 'STOPPED':
                     break
@@ -412,7 +419,8 @@ def terminate_instances(
         if instance['virtualServerName'] == cluster_name_on_cloud:
             try:
                 instance_id = instance['virtualServerId']
-                instance_info = scp_utils.SCPClient().get_virtual_server_info(instance_id)
+                instance_info = scp_utils.SCPClient().get_virtual_server_info(
+                    instance_id)
                 vpc_id = instance_info['vpcId']
                 sg_id = instance_info['securityGroupIds'][0]['securityGroupId']
                 firewall_id = _get_firewall_id(vpc_id)
@@ -471,12 +479,12 @@ def get_cluster_info(
     instances = {}
     for instance in running_instances:
         instances[instance['virtualServerId']] = [
-            common.InstanceInfo(instance_id=instance['virtualServerId'],
-                                internal_ip=instance['ip'],
-                                external_ip=scp_utils.SCPClient().get_external_ip(
-                                    instance['virtualServerId'],
-                                    instance['ip']),
-                                tags={})
+            common.InstanceInfo(
+                instance_id=instance['virtualServerId'],
+                internal_ip=instance['ip'],
+                external_ip=scp_utils.SCPClient().get_external_ip(
+                    instance['virtualServerId'], instance['ip']),
+                tags={})
         ]
 
     return common.ClusterInfo(
@@ -501,7 +509,8 @@ def open_ports(
             instance_info = scp_utils.SCPClient().get_virtual_server_info(
                 instance['virtualServerId'])
             sg_id = instance_info['securityGroupIds'][0]['securityGroupId']
-            scp_utils.SCPClient().add_new_security_group_rule(sg_id, 'IN', ports)
+            scp_utils.SCPClient().add_new_security_group_rule(
+                sg_id, 'IN', ports)
             vpc_id = instance_info['vpcId']
             internal_ip = instance_info['ip']
             _add_firewall_rule(vpc_id, internal_ip, ports)
@@ -523,7 +532,8 @@ def _add_firewall_rule(vpc_id: str, internal_ip: str, ports: List[str]) -> None:
                         firewall_id, internal_ip, 'IN', ports)
                     if rule_info is not None:
                         rule_id = rule_info['resourceId']
-                        scp_utils.SCPClient().wait_firewall_rule_complete(firewall_id, rule_id)
+                        scp_utils.SCPClient().wait_firewall_rule_complete(
+                            firewall_id, rule_id)
                     break
                 except Exception as e:  # pylint: disable=broad-except
                     attempts += 1
@@ -575,3 +585,4 @@ def _get_firewall_rule_ids(instance_info, firewall_id,
                     'destinationIpAddresses'][0]:
                 rule_ids.append(rule['ruleId'])
     return rule_ids
+(sky) ubuntu@ip-172-31-9-178:~/skypilot/sky/provision/scp$ 
