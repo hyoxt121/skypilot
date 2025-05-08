@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 def run_instances(region: str, cluster_name_on_cloud: str,
                   config: common.ProvisionConfig) -> common.ProvisionRecord:
 
-    client = utils.SCPClient()
     zone_id = config.node_config['zone_id']
     running_instances = _filter_instances(cluster_name_on_cloud, ['RUNNING'])
     head_instance_id = _get_head_instance_id(running_instances)
@@ -44,9 +43,9 @@ def run_instances(region: str, cluster_name_on_cloud: str,
     stopped_instances = _filter_instances(cluster_name_on_cloud, ['STOPPED'])
     if to_start_count <= len(stopped_instances):
         head_instance_id = _get_head_instance_id(stopped_instances)
-        client.start_instance(head_instance_id)
+        utils.SCPClient().start_instance(head_instance_id)
         while True:
-            instance_info = client.get_virtual_server_info(head_instance_id)
+            instance_info = utils.SCPClient().get_virtual_server_info(head_instance_id)
             if instance_info['virtualServerState'] == 'RUNNING':
                 break
             time.sleep(2)
@@ -99,34 +98,33 @@ def run_instances(region: str, cluster_name_on_cloud: str,
 
 
 def _get_or_create_vpc_subnets(zone_id):
-    client = utils.SCPClient()
     while len(_get_vcp_subnets(zone_id)) == 0:
         try:
-            response = client.create_vpc(zone_id)
+            response = utils.SCPClient().create_vpc(zone_id)
             time.sleep(5)
             vpc_id = response['resourceId']
             while True:
-                vpc_info = client.get_vpc_info(vpc_id)
+                vpc_info = utils.SCPClient().get_vpc_info(vpc_id)
                 if vpc_info['vpcState'] == 'ACTIVE':
                     break
                 else:
                     time.sleep(5)
 
-            response = client.create_subnet(vpc_id, zone_id)
+            response = utils.SCPClient().create_subnet(vpc_id, zone_id)
             time.sleep(5)
             subnet_id = response['resourceId']
             while True:
-                subnet_info = client.get_subnet_info(subnet_id)
+                subnet_info = utils.SCPClient().get_subnet_info(subnet_id)
                 if subnet_info['subnetState'] == 'ACTIVE':
                     break
                 else:
                     time.sleep(5)
 
-            response = client.create_internet_gateway(vpc_id)
+            response = utils.SCPClient().create_internet_gateway(vpc_id)
             time.sleep(5)
             internet_gateway_id = response['resourceId']
             while True:
-                internet_gateway_info = client.get_internet_gateway_info(
+                internet_gateway_info = utils.SCPClient().get_internet_gateway_info(
                     internet_gateway_id)
                 if internet_gateway_info['internetGatewayState'] == 'ATTACHED':
                     break
@@ -134,7 +132,7 @@ def _get_or_create_vpc_subnets(zone_id):
                     time.sleep(5)
 
             while True:
-                vpc_info = client.get_vpc_info(vpc_id)
+                vpc_info = utils.SCPClient().get_vpc_info(vpc_id)
                 if vpc_info['vpcState'] == 'ACTIVE':
                     break
                 else:
@@ -152,8 +150,7 @@ def _get_or_create_vpc_subnets(zone_id):
 
 def _filter_instances(cluster_name_on_cloud,
                       status_filter: Optional[List[str]]):
-    client = utils.SCPClient()
-    instances = client.get_instances()
+    instances = utils.SCPClient().get_instances()
     exist_instances = []
     if status_filter is not None:
         for instance in instances:
@@ -176,13 +173,12 @@ def _get_head_instance_id(instances):
 
 
 def _get_vcp_subnets(zone_id):
-    client = utils.SCPClient()
-    vpc_contents = client.get_vpcs(zone_id)
+    vpc_contents = utils.SCPClient().get_vpcs(zone_id)
     vpc_list = [
         item['vpcId'] for item in vpc_contents if item['vpcState'] == 'ACTIVE'
     ]
 
-    igw_contents = client.get_internet_gateway()
+    igw_contents = utils.SCPClient().get_internet_gateway()
     vps_with_igw = [
         item['vpcId']
         for item in igw_contents
@@ -191,7 +187,7 @@ def _get_vcp_subnets(zone_id):
 
     vpc_list = [vpc for vpc in vpc_list if vpc in vps_with_igw]
 
-    subnet_contents = client.get_subnets()
+    subnet_contents = utils.SCPClient().get_subnets()
 
     vpc_subnets = {}
     for vpc in vpc_list:
@@ -208,16 +204,15 @@ def _get_vcp_subnets(zone_id):
 
 def _config_security_group(zone_id, vpc, cluster_name):
     del cluster_name
-    client = utils.SCPClient()
     sg_name = ''.join(random.choices(string.ascii_lowercase, k=8))
 
     undo_func_stack = []
     try:
-        response = client.create_security_group(zone_id, vpc, sg_name)
+        response = utils.SCPClient().create_security_group(zone_id, vpc, sg_name)
         sg_id = response['resourceId']
         undo_func_stack.append(lambda: _delete_security_group(sg_id))
         while True:
-            sg_contents = client.get_security_groups(vpc, sg_name)
+            sg_contents = utils.SCPClient().get_security_groups(vpc, sg_name)
             sg = [
                 sg['securityGroupState']
                 for sg in sg_contents
@@ -227,8 +222,8 @@ def _config_security_group(zone_id, vpc, cluster_name):
                 break
             time.sleep(5)
 
-        client.add_security_group_in_rule(sg_id)
-        client.add_security_group_out_rule(sg_id)
+        utils.SCPClient().add_security_group_in_rule(sg_id)
+        utils.SCPClient().add_security_group_out_rule(sg_id)
 
         return sg_id
     except Exception as e:  # pylint: disable=broad-except
@@ -238,11 +233,10 @@ def _config_security_group(zone_id, vpc, cluster_name):
 
 
 def _delete_security_group(sg_id):
-    client = utils.SCPClient()
-    client.delete_security_group(sg_id)
+    utils.SCPClient().delete_security_group(sg_id)
     while True:
         time.sleep(5)
-        sg_contents = client.get_security_groups()
+        sg_contents = utils.SCPClient().get_security_groups()
         sg = [
             sg['securityGroupState']
             for sg in sg_contents
@@ -279,11 +273,10 @@ def _create_instance_sequence(vpc, instance_config):
 
 
 def _delete_instance(instance_id):
-    client = utils.SCPClient()
-    client.terminate_instance(instance_id)
+    utils.SCPClient().terminate_instance(instance_id)
     while True:
         time.sleep(10)
-        instances = client.get_instances()
+        instances = utils.SCPClient().get_instances()
         inst = [
             instance['virtualServerId']
             for instance in instances
@@ -294,7 +287,6 @@ def _delete_instance(instance_id):
 
 
 def _delete_firewall_rules(firewall_id, rule_ids):
-    client = utils.SCPClient()
     if not isinstance(rule_ids, list):
         rule_ids = [rule_ids]
 
@@ -302,7 +294,7 @@ def _delete_firewall_rules(firewall_id, rule_ids):
     max_attempts = 300
     while attempts < max_attempts:
         try:
-            client.delete_firewall_rules(firewall_id, rule_ids)
+            utils.SCPClient().delete_firewall_rules(firewall_id, rule_ids)
             if _exist_firewall_rule(firewall_id, rule_ids) is False:
                 break
         except Exception as e:  # pylint: disable=broad-except
@@ -314,8 +306,7 @@ def _delete_firewall_rules(firewall_id, rule_ids):
 
 
 def _exist_firewall_rule(firewall_id, rule_ids):
-    client = utils.SCPClient()
-    firewall_rules = client.get_firewall_rules(firewall_id)
+    firewall_rules = utils.SCPClient().get_firewall_rules(firewall_id)
     for rule_id in rule_ids:
         if rule_id in firewall_rules:
             return True
@@ -323,8 +314,7 @@ def _exist_firewall_rule(firewall_id, rule_ids):
 
 
 def _get_firewall_id(vpc_id):
-    client = utils.SCPClient()
-    firewall_contents = client.get_firewalls()
+    firewall_contents = utils.SCPClient().get_firewalls()
     firewall_id = [
         firewall['firewallId']
         for firewall in firewall_contents
@@ -336,18 +326,17 @@ def _get_firewall_id(vpc_id):
 
 
 def _add_firewall_inbound(firewall_id, internal_ip):
-    client = utils.SCPClient()
     attempts = 0
     max_attempts = 300
 
     while attempts < max_attempts:
         try:
-            rule_info = client.add_firewall_inbound_rule(
+            rule_info = utils.SCPClient().add_firewall_inbound_rule(
                 firewall_id, internal_ip)
             rule_id = rule_info['resourceId']
             while True:
                 time.sleep(5)
-                rule_info = client.get_firewall_rule_info(firewall_id, rule_id)
+                rule_info = utils.SCPClient().get_firewall_rule_info(firewall_id, rule_id)
                 if rule_info['ruleState'] == 'ACTIVE':
                     break
             return rule_id
@@ -360,18 +349,17 @@ def _add_firewall_inbound(firewall_id, internal_ip):
 
 
 def _add_firewall_outbound(firewall_id, internal_ip):
-    client = utils.SCPClient()
     attempts = 0
     max_attempts = 300
 
     while attempts < max_attempts:
         try:
-            rule_info = client.add_firewall_outbound_rule(
+            rule_info = utils.SCPClient().add_firewall_outbound_rule(
                 firewall_id, internal_ip)
             rule_id = rule_info['resourceId']
             while True:
                 time.sleep(5)
-                rule_info = client.get_firewall_rule_info(firewall_id, rule_id)
+                rule_info = utils.SCPClient().get_firewall_rule_info(firewall_id, rule_id)
                 if rule_info['ruleState'] == 'ACTIVE':
                     break
             return rule_id
@@ -384,12 +372,11 @@ def _add_firewall_outbound(firewall_id, internal_ip):
 
 
 def _create_instance(instance_config):
-    client = utils.SCPClient()
-    response = client.create_instance(instance_config)
+    response = utils.SCPClient().create_instance(instance_config)
     instance_id = response.get('resourceId', None)
     while True:
         time.sleep(10)
-        instance_info = client.get_virtual_server_info(instance_id)
+        instance_info = utils.SCPClient().get_virtual_server_info(instance_id)
         if instance_info['virtualServerState'] == 'RUNNING':
             break
     return instance_id, instance_info['ip']
@@ -401,15 +388,14 @@ def stop_instances(
     worker_only: bool = False,
 ) -> None:
     del provider_config, worker_only
-    client = utils.SCPClient()
-    instances = client.get_instances()
+    instances = utils.SCPClient().get_instances()
 
     for instance in instances:
         if instance['virtualServerName'] == cluster_name_on_cloud:
             instance_id = instance['virtualServerId']
-            client.stop_instance(instance_id)
+            utils.SCPClient().stop_instance(instance_id)
             while True:
-                instance_info = client.get_virtual_server_info(instance_id)
+                instance_info = utils.SCPClient().get_virtual_server_info(instance_id)
                 time.sleep(2)
                 if instance_info['virtualServerState'] == 'STOPPED':
                     break
@@ -421,14 +407,13 @@ def terminate_instances(
     worker_only: bool = False,
 ) -> None:
     del provider_config, worker_only
-    client = utils.SCPClient()
-    instances = client.get_instances()
+    instances = utils.SCPClient().get_instances()
 
     for instance in instances:
         if instance['virtualServerName'] == cluster_name_on_cloud:
             try:
                 instance_id = instance['virtualServerId']
-                instance_info = client.get_virtual_server_info(instance_id)
+                instance_info = utils.SCPClient().get_virtual_server_info(instance_id)
                 vpc_id = instance_info['vpcId']
                 sg_id = instance_info['securityGroupIds'][0]['securityGroupId']
                 firewall_id = _get_firewall_id(vpc_id)
@@ -480,7 +465,6 @@ def get_cluster_info(
         cluster_name_on_cloud: str,
         provider_config: Optional[Dict[str, Any]] = None) -> common.ClusterInfo:
     del region
-    client = utils.SCPClient()
     running_instances = _filter_instances(cluster_name_on_cloud, ['RUNNING'])
     head_instance_id = _get_head_instance_id(running_instances)
 
@@ -489,7 +473,7 @@ def get_cluster_info(
         instances[instance['virtualServerId']] = [
             common.InstanceInfo(instance_id=instance['virtualServerId'],
                                 internal_ip=instance['ip'],
-                                external_ip=client.get_external_ip(
+                                external_ip=utils.SCPClient().get_external_ip(
                                     instance['virtualServerId'],
                                     instance['ip']),
                                 tags={})
@@ -510,23 +494,21 @@ def open_ports(
 ) -> None:
 
     del provider_config
-    client = utils.SCPClient()
-    instances = client.get_instances()
+    instances = utils.SCPClient().get_instances()
 
     for instance in instances:
         if instance['virtualServerName'] == cluster_name_on_cloud:
-            instance_info = client.get_virtual_server_info(
+            instance_info = utils.SCPClient().get_virtual_server_info(
                 instance['virtualServerId'])
             sg_id = instance_info['securityGroupIds'][0]['securityGroupId']
-            client.add_new_security_group_rule(sg_id, 'IN', ports)
+            utils.SCPClient().add_new_security_group_rule(sg_id, 'IN', ports)
             vpc_id = instance_info['vpcId']
             internal_ip = instance_info['ip']
             _add_firewall_rule(vpc_id, internal_ip, ports)
 
 
 def _add_firewall_rule(vpc_id: str, internal_ip: str, ports: List[str]) -> None:
-    client = utils.SCPClient()
-    firewall_list = client.get_firewalls()
+    firewall_list = utils.SCPClient().get_firewalls()
 
     for firewall in firewall_list:
         if firewall['vpcId'] == vpc_id:
@@ -536,11 +518,11 @@ def _add_firewall_rule(vpc_id: str, internal_ip: str, ports: List[str]) -> None:
             max_attempts = 300
             while attempts < max_attempts:
                 try:
-                    rule_info = client.add_new_firewall_rule(
+                    rule_info = utils.SCPClient().add_new_firewall_rule(
                         firewall_id, internal_ip, 'IN', ports)
                     if rule_info is not None:
                         rule_id = rule_info['resourceId']
-                        client.wait_firewall_rule_complete(firewall_id, rule_id)
+                        utils.SCPClient().wait_firewall_rule_complete(firewall_id, rule_id)
                     break
                 except Exception as e:  # pylint: disable=broad-except
                     attempts += 1
@@ -556,12 +538,11 @@ def cleanup_ports(  # pylint: disable=pointless-string-statement
 ) -> None:
 
     del provider_config
-    client = utils.SCPClient()
-    instances = client.get_instances()
+    instances = utils.SCPClient().get_instances()
 
     for instance in instances:
         if instance['virtualServerName'] == cluster_name_on_cloud:
-            instance_info = client.get_virtual_server_info(
+            instance_info = utils.SCPClient().get_virtual_server_info(
                 instance['virtualServerId'])
             vpc_id = instance_info['vpcId']
             firewall_id = _get_firewall_id(vpc_id)
@@ -571,11 +552,10 @@ def cleanup_ports(  # pylint: disable=pointless-string-statement
 
 def _get_firewall_rule_ids(instance_info, firewall_id,
                            ports: Optional[List[str]]):
-    client = utils.SCPClient()
     rule_ids = []
     if ports is not None:
         destination_ip = instance_info['ip']
-        rules = client.get_firewall_rules(firewall_id)
+        rules = utils.SCPClient().get_firewall_rules(firewall_id)
         for rule in rules:
             port_list = ','.join(rule['tcpServices'])
             port = ','.join(ports)
@@ -585,7 +565,7 @@ def _get_firewall_rule_ids(instance_info, firewall_id,
                 rule_ids.append(rule['ruleId'])
     else:
         ip = instance_info['ip']
-        rules = client.get_firewall_rules(firewall_id)
+        rules = utils.SCPClient().get_firewall_rules(firewall_id)
         for rule in rules:
             if ip == rule['destinationIpAddresses'][0] and '0.0.0.0/0' == rule[
                     'sourceIpAddresses'][0]:
