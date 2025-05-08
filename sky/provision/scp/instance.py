@@ -11,12 +11,12 @@ from sky.provision.scp import utils
 from sky.utils import status_lib
 
 logger = logging.getLogger(__name__)
-client = utils.SCPClient()
 
 
 def run_instances(region: str, cluster_name_on_cloud: str,
                   config: common.ProvisionConfig) -> common.ProvisionRecord:
 
+    client = utils.SCPClient()
     zone_id = config.node_config['zone_id']
     running_instances = _filter_instances(cluster_name_on_cloud, ['RUNNING'])
     head_instance_id = _get_head_instance_id(running_instances)
@@ -66,7 +66,7 @@ def run_instances(region: str, cluster_name_on_cloud: str,
     instance_id = None
     vpc_subnets = _get_or_create_vpc_subnets(zone_id)
     for vpc, subnets in vpc_subnets.items():
-        sg_id = _config_security_group(zone_id, vpc)
+        sg_id = _config_security_group(zone_id, vpc, cluster_name_on_cloud)
         if sg_id is None:
             continue
         try:
@@ -99,6 +99,7 @@ def run_instances(region: str, cluster_name_on_cloud: str,
 
 
 def _get_or_create_vpc_subnets(zone_id):
+    client = utils.SCPClient()
     while len(_get_vcp_subnets(zone_id)) == 0:
         try:
             response = client.create_vpc(zone_id)
@@ -151,6 +152,7 @@ def _get_or_create_vpc_subnets(zone_id):
 
 def _filter_instances(cluster_name_on_cloud,
                       status_filter: Optional[List[str]]):
+    client = utils.SCPClient()
     instances = client.get_instances()
     exist_instances = []
     if status_filter is not None:
@@ -174,6 +176,7 @@ def _get_head_instance_id(instances):
 
 
 def _get_vcp_subnets(zone_id):
+    client = utils.SCPClient()
     vpc_contents = client.get_vpcs(zone_id)
     vpc_list = [
         item['vpcId'] for item in vpc_contents if item['vpcState'] == 'ACTIVE'
@@ -203,8 +206,10 @@ def _get_vcp_subnets(zone_id):
     return vpc_subnets
 
 
-def _config_security_group(zone_id, vpc):
-    sg_name = 'sky' + ''.join(random.choices(string.ascii_lowercase, k=8))
+def _config_security_group(zone_id, vpc, cluster_name):
+    del cluster_name
+    client = utils.SCPClient()
+    sg_name = ''.join(random.choices(string.ascii_lowercase, k=8))
 
     undo_func_stack = []
     try:
@@ -233,6 +238,7 @@ def _config_security_group(zone_id, vpc):
 
 
 def _delete_security_group(sg_id):
+    client = utils.SCPClient()
     client.delete_security_group(sg_id)
     while True:
         time.sleep(5)
@@ -273,6 +279,7 @@ def _create_instance_sequence(vpc, instance_config):
 
 
 def _delete_instance(instance_id):
+    client = utils.SCPClient()
     client.terminate_instance(instance_id)
     while True:
         time.sleep(10)
@@ -287,6 +294,7 @@ def _delete_instance(instance_id):
 
 
 def _delete_firewall_rules(firewall_id, rule_ids):
+    client = utils.SCPClient()
     if not isinstance(rule_ids, list):
         rule_ids = [rule_ids]
 
@@ -306,6 +314,7 @@ def _delete_firewall_rules(firewall_id, rule_ids):
 
 
 def _exist_firewall_rule(firewall_id, rule_ids):
+    client = utils.SCPClient()
     firewall_rules = client.get_firewall_rules(firewall_id)
     for rule_id in rule_ids:
         if rule_id in firewall_rules:
@@ -314,6 +323,7 @@ def _exist_firewall_rule(firewall_id, rule_ids):
 
 
 def _get_firewall_id(vpc_id):
+    client = utils.SCPClient()
     firewall_contents = client.get_firewalls()
     firewall_id = [
         firewall['firewallId']
@@ -326,6 +336,7 @@ def _get_firewall_id(vpc_id):
 
 
 def _add_firewall_inbound(firewall_id, internal_ip):
+    client = utils.SCPClient()
     attempts = 0
     max_attempts = 300
 
@@ -349,6 +360,7 @@ def _add_firewall_inbound(firewall_id, internal_ip):
 
 
 def _add_firewall_outbound(firewall_id, internal_ip):
+    client = utils.SCPClient()
     attempts = 0
     max_attempts = 300
 
@@ -372,6 +384,7 @@ def _add_firewall_outbound(firewall_id, internal_ip):
 
 
 def _create_instance(instance_config):
+    client = utils.SCPClient()
     response = client.create_instance(instance_config)
     instance_id = response.get('resourceId', None)
     while True:
@@ -388,6 +401,7 @@ def stop_instances(
     worker_only: bool = False,
 ) -> None:
     del provider_config, worker_only
+    client = utils.SCPClient()
     instances = client.get_instances()
 
     for instance in instances:
@@ -407,6 +421,7 @@ def terminate_instances(
     worker_only: bool = False,
 ) -> None:
     del provider_config, worker_only
+    client = utils.SCPClient()
     instances = client.get_instances()
 
     for instance in instances:
@@ -495,6 +510,7 @@ def open_ports(
 ) -> None:
 
     del provider_config
+    client = utils.SCPClient()
     instances = client.get_instances()
 
     for instance in instances:
@@ -509,7 +525,7 @@ def open_ports(
 
 
 def _add_firewall_rule(vpc_id: str, internal_ip: str, ports: List[str]) -> None:
-
+    client = utils.SCPClient()
     firewall_list = client.get_firewalls()
 
     for firewall in firewall_list:
@@ -540,6 +556,7 @@ def cleanup_ports(  # pylint: disable=pointless-string-statement
 ) -> None:
 
     del provider_config
+    client = utils.SCPClient()
     instances = client.get_instances()
 
     for instance in instances:
@@ -554,6 +571,7 @@ def cleanup_ports(  # pylint: disable=pointless-string-statement
 
 def _get_firewall_rule_ids(instance_info, firewall_id,
                            ports: Optional[List[str]]):
+    client = utils.SCPClient()
     rule_ids = []
     if ports is not None:
         destination_ip = instance_info['ip']
