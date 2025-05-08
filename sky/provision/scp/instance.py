@@ -6,8 +6,8 @@ import string
 import time
 from typing import Any, Dict, List, Optional
 
-from sky.provision import common
 from sky.clouds.utils import scp_utils
+from sky.provision import common
 from sky.utils import status_lib
 
 logger = logging.getLogger(__name__)
