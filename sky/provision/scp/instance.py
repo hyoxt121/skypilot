@@ -66,7 +66,7 @@ def run_instances(region: str, cluster_name_on_cloud: str,
     instance_id = None
     vpc_subnets = _get_or_create_vpc_subnets(zone_id)
     for vpc, subnets in vpc_subnets.items():
-        sg_id = _config_security_group(zone_id, vpc)
+        sg_id = _create_security_group(zone_id, vpc)
         if sg_id is None:
             continue
         try:
@@ -203,7 +203,7 @@ def _get_vcp_subnets(zone_id):
     return vpc_subnets
 
 
-def _config_security_group(zone_id, vpc):
+def _create_security_group(zone_id, vpc):
     sg_name = 'sky' + ''.join(random.choices(string.ascii_lowercase, k=8))
 
     undo_func_stack = []
@@ -229,7 +229,7 @@ def _config_security_group(zone_id, vpc):
 
         return sg_id
     except Exception as e:  # pylint: disable=broad-except
-        _undo_funcs(undo_func_stack)
+        _undo_functions(undo_func_stack)
         logger.error(f'security group creation error: {e}')
         return None
 
@@ -248,7 +248,7 @@ def _delete_security_group(sg_id):
             break
 
 
-def _undo_funcs(undo_func_list):
+def _undo_functions(undo_func_list):
     while undo_func_list:
         func = undo_func_list.pop()
         func()
@@ -270,7 +270,7 @@ def _create_instance_sequence(vpc, instance_config):
 
     except Exception as e:  # pylint: disable=broad-except
         logger.error(f'instance creation error: {e}')
-        _undo_funcs(undo_func_stack)
+        _undo_functions(undo_func_stack)
         return None
 
 
