@@ -317,7 +317,7 @@ class SCP(clouds.Cloud):
         """Checks if the user has access credentials to
         SCP's compute service."""
         try:
-            scp_utils.SCPClient().list_instances()
+            scp_utils.SCPClient().get_instances()
         except (AssertionError, KeyError, scp_utils.SCPClientError,
                 scp_utils.SCPCreationFailError):
             return False, (
