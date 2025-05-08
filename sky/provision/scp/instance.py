@@ -180,13 +180,13 @@ def _get_vcp_subnets(zone_id):
     ]
 
     igw_contents = scp_utils.SCPClient().get_internet_gateway()
-    vps_with_igw = [
+    vpc_with_igw = [
         item['vpcId']
         for item in igw_contents
         if item['internetGatewayState'] == 'ATTACHED'
     ]
 
-    vpc_list = [vpc for vpc in vpc_list if vpc in vps_with_igw]
+    vpc_list = [vpc for vpc in vpc_list if vpc in vpc_with_igw]
 
     subnet_contents = scp_utils.SCPClient().get_subnets()
 
