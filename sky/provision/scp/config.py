@@ -5,9 +5,6 @@ import subprocess
 from sky.provision import common
 from sky.clouds.utils import scp_utils
 
-# client = scp_utils.SCPClient()
-
-
 def bootstrap_instances(
         region: str, cluster_name: str,
         config: common.ProvisionConfig) -> common.ProvisionConfig:
