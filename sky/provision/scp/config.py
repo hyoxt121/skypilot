@@ -2,8 +2,6 @@
 
 import subprocess
 
-from requests import auth
-
 from sky.clouds.utils import scp_utils
 from sky.provision import common
 
