@@ -90,4 +90,7 @@ def _get_default_config_cmd():
 
 def _get_key_pair_id():
     key_pairs = scp_utils.SCPClient().get_key_pairs()
+    if len(key_pairs['contents']) == 0:
+        raise RuntimeError('create key pair')
     return key_pairs['contents'][0]['keyPairId']
+
