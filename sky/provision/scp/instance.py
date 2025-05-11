@@ -350,8 +350,8 @@ def _add_firewall_rule(firewall_id, internal_ip, direction,
 
 
 def _create_instance(instance_config):
-    response = scp_utils.SCPClient().create_instance(instance_config)
-    instance_id = response.get('resourceId', None)
+    instance = scp_utils.SCPClient().create_instance(instance_config)
+    instance_id = instance['resourceId']
     while True:
         time.sleep(10)
         instance_info = scp_utils.SCPClient().get_instance_info(instance_id)
