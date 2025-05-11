@@ -302,7 +302,7 @@ def _delete_firewall_rule(firewall_id, rule_ids):
             time.sleep(5)
             logger.error(f'delete firewall rule error: {e}')
             continue
-    return
+    raise RuntimeError('delete firewall rule error')
 
 
 def _remaining_firewall_rule(firewall_id, rule_ids):
