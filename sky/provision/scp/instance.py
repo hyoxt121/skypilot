@@ -24,8 +24,7 @@ def run_instances(region: str, cluster_name_on_cloud: str,
     if to_start_count < 0:
         raise RuntimeError(
             f'Cluster {cluster_name_on_cloud} already has '
-            f'{len(running_instances)} nodes, but {config.count} are required.'
-        )
+            f'{len(running_instances)} nodes, but {config.count} are required.')
 
     if to_start_count == 0:
         if head_instance_id is None:
@@ -52,14 +51,13 @@ def run_instances(region: str, cluster_name_on_cloud: str,
                 break
             time.sleep(2)
         resumed_instance_ids = [head_instance_id]
-        return common.ProvisionRecord(
-            provider_name='scp',
-            cluster_name=cluster_name_on_cloud,
-            region=region,
-            zone=None,
-            head_instance_id=head_instance_id,
-            resumed_instance_ids=resumed_instance_ids,
-            created_instance_ids=[])
+        return common.ProvisionRecord(provider_name='scp',
+                                      cluster_name=cluster_name_on_cloud,
+                                      region=region,
+                                      zone=None,
+                                      head_instance_id=head_instance_id,
+                                      resumed_instance_ids=resumed_instance_ids,
+                                      created_instance_ids=[])
 
     # SCP does not support multi-node
     instance_config = config.docker_config
@@ -159,7 +157,8 @@ def _get_vcp_subnets(zone_id):
 
     igw_contents = scp_utils.SCPClient().get_internet_gateway()
     vpc_with_igw = [
-        item['vpcId'] for item in igw_contents
+        item['vpcId']
+        for item in igw_contents
         if item['internetGatewayState'] == 'ATTACHED'
     ]
 
@@ -170,7 +169,8 @@ def _get_vcp_subnets(zone_id):
     vpc_subnets = {}
     for vpc in vpc_list:
         subnet_list = [
-            item['subnetId'] for item in subnet_contents
+            item['subnetId']
+            for item in subnet_contents
             if item['subnetState'] == 'ACTIVE' and item['vpcId'] == vpc
         ]
         if subnet_list:
@@ -216,7 +216,8 @@ def _create_security_group(zone_id, vpc):
             sg_contents = scp_utils.SCPClient().get_security_groups(
                 vpc, sg_name)
             sg = [
-                sg['securityGroupState'] for sg in sg_contents
+                sg['securityGroupState']
+                for sg in sg_contents
                 if sg['securityGroupId'] == sg_id
             ]
             if sg and sg[0] == 'ACTIVE':
@@ -239,7 +240,8 @@ def _delete_security_group(sg_id):
         time.sleep(5)
         sg_contents = scp_utils.SCPClient().get_security_groups()
         sg = [
-            sg['securityGroupState'] for sg in sg_contents
+            sg['securityGroupState']
+            for sg in sg_contents
             if sg['securityGroupId'] == sg_id
         ]
         if not sg:
@@ -278,7 +280,8 @@ def _delete_instance(instance_id):
         time.sleep(10)
         instances = scp_utils.SCPClient().get_instances()
         inst = [
-            instance['virtualServerId'] for instance in instances
+            instance['virtualServerId']
+            for instance in instances
             if instance['virtualServerId'] == instance_id
         ]
         if not inst:
@@ -315,9 +318,10 @@ def _check_existing_firewall_rule(firewall_id, rule_ids):
 def _get_firewall_id(vpc_id):
     firewall_contents = scp_utils.SCPClient().get_firewalls()
     firewall_id = [
-        firewall['firewallId'] for firewall in firewall_contents
-        if firewall['vpcId'] == vpc_id and (
-            firewall['firewallState'] in ['ACTIVE', 'DEPLOYING'])
+        firewall['firewallId']
+        for firewall in firewall_contents
+        if firewall['vpcId'] == vpc_id and
+        (firewall['firewallState'] in ['ACTIVE', 'DEPLOYING'])
     ][0]
 
     return firewall_id
@@ -410,8 +414,7 @@ def query_instances(
     non_terminated_only: bool = True,
 ) -> Dict[str, Optional[status_lib.ClusterStatus]]:
 
-    assert provider_config is not None, (cluster_name_on_cloud,
-                                         provider_config)
+    assert provider_config is not None, (cluster_name_on_cloud, provider_config)
     instances = _filter_instances(cluster_name_on_cloud, None)
 
     status_map = {
@@ -435,16 +438,14 @@ def query_instances(
     return statuses
 
 
-def wait_instances(region: str, cluster_name_on_cloud: str,
-                   state: str) -> None:
+def wait_instances(region: str, cluster_name_on_cloud: str, state: str) -> None:
     del region, cluster_name_on_cloud, state
 
 
 def get_cluster_info(
         region: str,
         cluster_name_on_cloud: str,
-        provider_config: Optional[Dict[str,
-                                       Any]] = None) -> common.ClusterInfo:
+        provider_config: Optional[Dict[str, Any]] = None) -> common.ClusterInfo:
     del region
 
     running_instances = _filter_instances(cluster_name_on_cloud, ['RUNNING'])
@@ -504,8 +505,7 @@ def cleanup_ports(  # pylint: disable=pointless-string-statement
                 instance['virtualServerId'])
             vpc_id = instance_info['vpcId']
             firewall_id = _get_firewall_id(vpc_id)
-            rule_ids = _get_firewall_rule_ids(instance_info, firewall_id,
-                                              ports)
+            rule_ids = _get_firewall_rule_ids(instance_info, firewall_id, ports)
             _delete_firewall_rule(firewall_id, rule_ids)
 
 
