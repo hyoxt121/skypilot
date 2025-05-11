@@ -78,7 +78,7 @@ def run_instances(region: str, cluster_name_on_cloud: str,
                     break
         except Exception as e:  # pylint: disable=broad-except
             _delete_security_group(sg_id)
-            RuntimeError(f'run_instances error: {e}')
+            logger.error(f'run_instances error: {e}')
             continue
 
     if instance_id is None:
@@ -142,7 +142,7 @@ def _get_or_create_vpc_subnets(zone_id):
             break
         except Exception as e:  # pylint: disable=broad-except
             time.sleep(10)
-            RuntimeError(f'vpc creation error: {e}')
+            logger.error(f'vpc creation error: {e}')
             continue
 
     vpc_subnets = _get_vcp_subnets(zone_id)
@@ -182,14 +182,14 @@ def _get_vcp_subnets(zone_id):
 def _filter_instances(cluster_name_on_cloud,
                       status_filter: Optional[List[str]]):
     instances = scp_utils.SCPClient().get_instances()
-    filtered_instances = []
+    exist_instances = []
     if status_filter is not None:
         for instance in instances:
             if instance[
                     'virtualServerName'] == cluster_name_on_cloud and instance[
                         'virtualServerState'] in status_filter:
-                filtered_instances.append(instance)
-        return filtered_instances
+                exist_instances.append(instance)
+        return exist_instances
     else:
         return instances
 
@@ -230,7 +230,7 @@ def _create_security_group(zone_id, vpc):
         return sg_id
     except Exception as e:  # pylint: disable=broad-except
         _undo_functions(undo_func_stack)
-        RuntimeError(f'security group creation error: {e}')
+        logger.error(f'security group creation error: {e}')
         return None
 
 
@@ -262,14 +262,14 @@ def _create_instance_sequence(vpc, instance_config):
         firewall_id = _get_firewall_id(vpc)
         in_rule_id = _add_firewall_rule(firewall_id, internal_ip, 'IN', None)
         undo_func_stack.append(
-            lambda: _delete_firewall_rule(firewall_id, in_rule_id))
+            lambda: _delete_firewall_rules(firewall_id, in_rule_id))
         out_rule_id = _add_firewall_rule(firewall_id, internal_ip, 'OUT', None)
         undo_func_stack.append(
-            lambda: _delete_firewall_rule(firewall_id, out_rule_id))
+            lambda: _delete_firewall_rules(firewall_id, out_rule_id))
         return instance_id
 
     except Exception as e:  # pylint: disable=broad-except
-        RuntimeError(f'instance creation error: {e}')
+        logger.error(f'instance creation error: {e}')
         _undo_functions(undo_func_stack)
         return None
 
@@ -288,7 +288,7 @@ def _delete_instance(instance_id):
             break
 
 
-def _delete_firewall_rule(firewall_id, rule_ids):
+def _delete_firewall_rules(firewall_id, rule_ids):
     if not isinstance(rule_ids, list):
         rule_ids = [rule_ids]
 
@@ -297,17 +297,17 @@ def _delete_firewall_rule(firewall_id, rule_ids):
     while attempts < max_attempts:
         try:
             scp_utils.SCPClient().delete_firewall_rule(firewall_id, rule_ids)
-            if _check_existing_firewall_rule(firewall_id, rule_ids) is False:
+            if _exist_firewall_rule(firewall_id, rule_ids) is False:
                 break
         except Exception as e:  # pylint: disable=broad-except
             attempts += 1
             time.sleep(5)
-            RuntimeError(f'delete firewall rule error: {e}')
+            logger.error(f'delete firewall rule error: {e}')
             continue
     return
 
 
-def _check_existing_firewall_rule(firewall_id, rule_ids):
+def _exist_firewall_rule(firewall_id, rule_ids):
     firewall_rules = scp_utils.SCPClient().get_firewall_rules(firewall_id)
     for rule_id in rule_ids:
         if rule_id in firewall_rules:
@@ -346,7 +346,7 @@ def _add_firewall_rule(firewall_id, internal_ip, direction,
         except Exception as e:  # pylint: disable=broad-except
             attempts += 1
             time.sleep(5)
-            RuntimeError(f'add firewall inbound rule error: {e}')
+            logger.error(f'add firewall rule error: {e}')
             continue
     raise RuntimeError('add firewall rule error')
 
@@ -401,11 +401,11 @@ def terminate_instances(
                 firewall_id = _get_firewall_id(vpc_id)
                 rule_ids = _get_firewall_rule_ids(instance_info, firewall_id,
                                                   None)
-                _delete_firewall_rule(firewall_id, rule_ids)
+                _delete_firewall_rules(firewall_id, rule_ids)
                 _delete_instance(instance_id)
                 _delete_security_group(sg_id)
             except Exception as e:  # pylint: disable=broad-except
-                RuntimeError(f'terminate_instances error: {e}')
+                logger.error(f'terminate_instances error: {e}')
 
 
 def query_instances(
@@ -506,7 +506,7 @@ def cleanup_ports(  # pylint: disable=pointless-string-statement
             vpc_id = instance_info['vpcId']
             firewall_id = _get_firewall_id(vpc_id)
             rule_ids = _get_firewall_rule_ids(instance_info, firewall_id, ports)
-            _delete_firewall_rule(firewall_id, rule_ids)
+            _delete_firewall_rules(firewall_id, rule_ids)
 
 
 def _get_firewall_rule_ids(instance_info, firewall_id,
