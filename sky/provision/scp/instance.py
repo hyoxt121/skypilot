@@ -314,10 +314,10 @@ def _remaining_firewall_rule(firewall_id, rule_ids):
 
 
 def _get_firewall_id(vpc_id):
-    firewall_contents = scp_utils.SCPClient().get_firewalls()
+    firewalls = scp_utils.SCPClient().get_firewalls()
     firewall_id = [
         firewall['firewallId']
-        for firewall in firewall_contents
+        for firewall in firewalls
         if firewall['vpcId'] == vpc_id and
         (firewall['firewallState'] in ['ACTIVE', 'DEPLOYING'])
     ][0]
