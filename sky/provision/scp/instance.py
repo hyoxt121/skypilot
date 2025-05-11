@@ -267,8 +267,8 @@ def _create_instance_sequence(vpc, instance_config):
         return instance_id
 
     except Exception as e:  # pylint: disable=broad-except
-        logger.error(f'instance creation error: {e}')
         _undo_functions(undo_func_stack)
+        logger.error(f'instance creation error: {e}')
         return None
 
 
