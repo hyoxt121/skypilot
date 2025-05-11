@@ -260,10 +260,10 @@ def _create_instance_sequence(vpc, instance_config):
         firewall_id = _get_firewall_id(vpc)
         in_rule_id = _add_firewall_rule(firewall_id, internal_ip, 'IN', None)
         undo_func_stack.append(
-            lambda: _delete_firewall_rules(firewall_id, in_rule_id))
+            lambda: _delete_firewall_rule(firewall_id, in_rule_id))
         out_rule_id = _add_firewall_rule(firewall_id, internal_ip, 'OUT', None)
         undo_func_stack.append(
-            lambda: _delete_firewall_rules(firewall_id, out_rule_id))
+            lambda: _delete_firewall_rule(firewall_id, out_rule_id))
         return instance_id
 
     except Exception as e:  # pylint: disable=broad-except
@@ -286,7 +286,7 @@ def _delete_instance(instance_id):
             break
 
 
-def _delete_firewall_rules(firewall_id, rule_ids):
+def _delete_firewall_rule(firewall_id, rule_ids):
     if not isinstance(rule_ids, list):
         rule_ids = [rule_ids]
 
@@ -295,7 +295,7 @@ def _delete_firewall_rules(firewall_id, rule_ids):
     while attempts < max_attempts:
         try:
             scp_utils.SCPClient().delete_firewall_rule(firewall_id, rule_ids)
-            if _exist_firewall_rule(firewall_id, rule_ids) is False:
+            if _check_existing_firewall_rule(firewall_id, rule_ids) is False:
                 break
         except Exception as e:  # pylint: disable=broad-except
             attempts += 1
@@ -305,7 +305,7 @@ def _delete_firewall_rules(firewall_id, rule_ids):
     return
 
 
-def _exist_firewall_rule(firewall_id, rule_ids):
+def _check_existing_firewall_rule(firewall_id, rule_ids):
     firewall_rules = scp_utils.SCPClient().get_firewall_rules(firewall_id)
     for rule_id in rule_ids:
         if rule_id in firewall_rules:
@@ -399,7 +399,7 @@ def terminate_instances(
                 firewall_id = _get_firewall_id(vpc_id)
                 rule_ids = _get_firewall_rule_ids(instance_info, firewall_id,
                                                   None)
-                _delete_firewall_rules(firewall_id, rule_ids)
+                _delete_firewall_rule(firewall_id, rule_ids)
                 _delete_instance(instance_id)
                 _delete_security_group(sg_id)
             except Exception as e:  # pylint: disable=broad-except
@@ -504,7 +504,7 @@ def cleanup_ports(  # pylint: disable=pointless-string-statement
             vpc_id = instance_info['vpcId']
             firewall_id = _get_firewall_id(vpc_id)
             rule_ids = _get_firewall_rule_ids(instance_info, firewall_id, ports)
-            _delete_firewall_rules(firewall_id, rule_ids)
+            _delete_firewall_rule(firewall_id, rule_ids)
 
 
 def _get_firewall_rule_ids(instance_info, firewall_id,
