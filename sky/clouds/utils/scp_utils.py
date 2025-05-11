@@ -257,7 +257,7 @@ class SCPClient:
             if direction == 'IN':
                 ports = ['22']
             else:
-                ports = ['22', '80', '443']
+                ports = ['21', '22', '80', '443']
         services = []
         for port in ports:
             services.append({'serviceType': 'TCP', 'serviceValue': port})
@@ -298,7 +298,7 @@ class SCPClient:
             if direction == 'IN':
                 ports = ['22']
             else:
-                ports = ['22', '80', '443']
+                ports = ['21', '22', '80', '443']
         services = []
         for port in ports:
             services.append({'serviceType': 'TCP', 'serviceValue': port})
