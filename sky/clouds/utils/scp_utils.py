@@ -233,7 +233,7 @@ class SCPClient:
             'securityGroupName': sg_name,
             'serviceZoneId': zone_id,
             'vpcId': vpc_id,
-            'securityGroupDescription': 'skypilot sg'
+            'securityGroupDescription': 'skypilot'
         }
         return self._post(url, request_body)
 
