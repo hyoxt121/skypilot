@@ -488,7 +488,7 @@ def open_ports(
             _add_firewall_rule(vpc_id, internal_ip, 'IN', ports)
 
 
-def cleanup_ports(  # pylint: disable=pointless-string-statement
+def cleanup_ports(
     cluster_name_on_cloud: str,
     ports: List[str],
     provider_config: Optional[Dict[str, Any]] = None,
