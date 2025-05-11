@@ -59,8 +59,8 @@ class Metadata:
             metadata = json.load(f)
         return metadata.get(instance_id)
 
-    def __setitem__(self, instance_id: str,
-                    value: Optional[Dict[str, Any]]) -> None:
+    def __setitem__(self, instance_id: str, value: Optional[Dict[str,
+                                                                 Any]]) -> None:
         # Read from metadata file
         if os.path.exists(self.path):
             with open(self.path, 'r', encoding='utf-8') as f:
@@ -165,8 +165,7 @@ class SCPClient:
         with open(self.credentials, 'r', encoding='utf-8') as f:
             lines = [line.strip() for line in f.readlines() if ' = ' in line]
             self._credentials = {
-                line.split(' = ')[0]: line.split(' = ')[1]
-                for line in lines
+                line.split(' = ')[0]: line.split(' = ')[1] for line in lines
             }
         self.access_key = self._credentials['access_key']
         self.secret_key = self._credentials['secret_key']
@@ -276,8 +275,8 @@ class SCPClient:
             }
             return self._post(url, request_body)
 
-    def _check_existing_firewall_rule(self, firewall_id, internal_ip,
-                                      direction, ports):
+    def _check_existing_firewall_rule(self, firewall_id, internal_ip, direction,
+                                      ports):
         response = self.get_firewall_rules(firewall_id)
         rules = []
         for rule in response:
@@ -366,8 +365,8 @@ class SCPClient:
             int(
                 round(
                     datetime.datetime.timestamp(datetime.datetime.now() -
-                                                datetime.timedelta(minutes=1))
-                    * 1000)))
+                                                datetime.timedelta(minutes=1)) *
+                    1000)))
         self.headers['X-Cmp-Timestamp'] = self.timestamp
 
     def set_signature(self, method: str, url: str) -> None:
