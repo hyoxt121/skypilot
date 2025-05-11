@@ -237,7 +237,7 @@ class SCPClient:
         }
         return self._post(url, request_body)
 
-    def _check_existing_security_group_rule(self, sg_id, direction, ports):
+    def _security_group_rule_not_exist(self, sg_id, direction, ports):
         response = self.get_security_group_rules(sg_id)
         rules = []
         for rule in response:
@@ -261,7 +261,7 @@ class SCPClient:
         services = []
         for port in ports:
             services.append({'serviceType': 'TCP', 'serviceValue': port})
-        if self._check_existing_security_group_rule(sg_id, direction, ports):
+        if self._security_group_rule_not_exist(sg_id, direction, ports):
             url = f'{API_ENDPOINT}/security-group/v2/security-groups/{sg_id}/rules'  # pylint: disable=line-too-long
             if direction == 'IN':
                 target_address = 'sourceIpAddresses'
@@ -275,8 +275,8 @@ class SCPClient:
             }
             return self._post(url, request_body)
 
-    def _check_existing_firewall_rule(self, firewall_id, internal_ip, direction,
-                                      ports):
+    def _firewall_rule_not_exist(self, firewall_id, internal_ip, direction,
+                                 ports):
         response = self.get_firewall_rules(firewall_id)
         rules = []
         for rule in response:
@@ -302,8 +302,8 @@ class SCPClient:
         services = []
         for port in ports:
             services.append({'serviceType': 'TCP', 'serviceValue': port})
-        if self._check_existing_firewall_rule(firewall_id, internal_ip,
-                                              direction, ports):
+        if self._firewall_rule_not_exist(firewall_id, internal_ip, direction,
+                                         ports):
             url = f'{API_ENDPOINT}/firewall/v2/firewalls/{firewall_id}/rules'
             if direction == 'IN':
                 source_ip = '0.0.0.0/0'
