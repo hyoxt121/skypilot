@@ -182,14 +182,14 @@ def _get_vcp_subnets(zone_id):
 def _filter_instances(cluster_name_on_cloud,
                       status_filter: Optional[List[str]]):
     instances = scp_utils.SCPClient().get_instances()
-    exist_instances = []
+    filtered_instances = []
     if status_filter is not None:
         for instance in instances:
             if instance[
                     'virtualServerName'] == cluster_name_on_cloud and instance[
                         'virtualServerState'] in status_filter:
-                exist_instances.append(instance)
-        return exist_instances
+                filtered_instances.append(instance)
+        return filtered_instances
     else:
         return instances
 
@@ -198,8 +198,6 @@ def _get_head_instance_id(instances):
     head_instance_id = None
     if len(instances) > 0:
         head_instance_id = instances[0]['virtualServerId']
-    else:
-        head_instance_id = None
     return head_instance_id
 
 
