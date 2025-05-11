@@ -295,7 +295,7 @@ def _delete_firewall_rule(firewall_id, rule_ids):
     while attempts < max_attempts:
         try:
             scp_utils.SCPClient().delete_firewall_rule(firewall_id, rule_ids)
-            if _check_existing_firewall_rule(firewall_id, rule_ids) is False:
+            if _remaining_firewall_rule(firewall_id, rule_ids) is False:
                 break
         except Exception as e:  # pylint: disable=broad-except
             attempts += 1
@@ -305,7 +305,7 @@ def _delete_firewall_rule(firewall_id, rule_ids):
     return
 
 
-def _check_existing_firewall_rule(firewall_id, rule_ids):
+def _remaining_firewall_rule(firewall_id, rule_ids):
     firewall_rules = scp_utils.SCPClient().get_firewall_rules(firewall_id)
     for rule_id in rule_ids:
         if rule_id in firewall_rules:
