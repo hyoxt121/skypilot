@@ -345,7 +345,7 @@ def _add_firewall_rule(firewall_id, internal_ip, direction,
             return rule_id
         except Exception as e:  # pylint: disable=broad-except
             attempts += 1
-            time.sleep(5)
+            time.sleep(10)
             logger.error(f'add firewall rule error: {e}')
             continue
     raise RuntimeError('add firewall rule error')
