@@ -293,33 +293,6 @@ def _delete_instance(instance_id):
             break
 
 
-def _delete_firewall_rule(firewall_id, rule_ids):
-    if not isinstance(rule_ids, list):
-        rule_ids = [rule_ids]
-
-    attempts = 0
-    max_attempts = 300
-    while attempts < max_attempts:
-        try:
-            scp_utils.SCPClient().delete_firewall_rule(firewall_id, rule_ids)
-            if _remaining_firewall_rule(firewall_id, rule_ids) is False:
-                return
-        except Exception as e:  # pylint: disable=broad-except
-            attempts += 1
-            time.sleep(5)
-            logger.error(f'delete firewall rule error: {e}')
-            continue
-    raise RuntimeError('delete firewall rule error')
-
-
-def _remaining_firewall_rule(firewall_id, rule_ids):
-    firewall_rules = scp_utils.SCPClient().get_firewall_rules(firewall_id)
-    for rule_id in rule_ids:
-        if rule_id in firewall_rules:
-            return True
-    return False
-
-
 def _get_firewall_id(vpc_id):
     firewalls = scp_utils.SCPClient().get_firewalls()
     firewall_id = [
@@ -346,13 +319,67 @@ def _add_firewall_rule(firewall_id, internal_ip, direction,
                 rule_info = scp_utils.SCPClient().get_firewall_rule_info(
                     firewall_id, rule_id)
                 if rule_info['ruleState'] == 'ACTIVE':
-                    return rule_id
+                    break
+            return rule_id
         except Exception as e:  # pylint: disable=broad-except
             attempts += 1
             time.sleep(10)
             logger.error(f'add firewall rule error: {e}')
             continue
     raise RuntimeError('add firewall rule error')
+
+
+def _delete_firewall_rule(firewall_id, rule_ids):
+    if not isinstance(rule_ids, list):
+        rule_ids = [rule_ids]
+
+    attempts = 0
+    max_attempts = 300
+    while attempts < max_attempts:
+        try:
+            scp_utils.SCPClient().delete_firewall_rule(firewall_id, rule_ids)
+            if _remaining_firewall_rule(firewall_id, rule_ids) is False:
+                break
+        except Exception as e:  # pylint: disable=broad-except
+            attempts += 1
+            time.sleep(5)
+            logger.error(f'delete firewall rule error: {e}')
+            continue
+    raise RuntimeError('delete firewall rule error')
+
+
+def _remaining_firewall_rule(firewall_id, rule_ids):
+    firewall_rules = scp_utils.SCPClient().get_firewall_rules(firewall_id)
+    for rule_id in rule_ids:
+        if rule_id in firewall_rules:
+            return True
+    return False
+
+
+def _get_firewall_rule_ids(instance_info, firewall_id,
+                           ports: Optional[List[str]]):
+    rule_ids = []
+    if ports is not None:
+        destination_ip = instance_info['ip']
+        rules = scp_utils.SCPClient().get_firewall_rules(firewall_id)
+        for rule in rules:
+            port_list = ','.join(rule['tcpServices'])
+            port = ','.join(ports)
+            if destination_ip == rule['destinationIpAddresses'][
+                    0] and '0.0.0.0/0' == rule['sourceIpAddresses'][
+                        0] and port == port_list:
+                rule_ids.append(rule['ruleId'])
+    else:
+        ip = instance_info['ip']
+        rules = scp_utils.SCPClient().get_firewall_rules(firewall_id)
+        for rule in rules:
+            if ip == rule['destinationIpAddresses'][0] and '0.0.0.0/0' == rule[
+                    'sourceIpAddresses'][0]:
+                rule_ids.append(rule['ruleId'])
+            if ip == rule['sourceIpAddresses'][0] and '0.0.0.0/0' == rule[
+                    'destinationIpAddresses'][0]:
+                rule_ids.append(rule['ruleId'])
+    return rule_ids
 
 
 def stop_instances(
@@ -501,29 +528,3 @@ def cleanup_ports(
             firewall_id = _get_firewall_id(vpc_id)
             rule_ids = _get_firewall_rule_ids(instance_info, firewall_id, ports)
             _delete_firewall_rule(firewall_id, rule_ids)
-
-
-def _get_firewall_rule_ids(instance_info, firewall_id,
-                           ports: Optional[List[str]]):
-    rule_ids = []
-    if ports is not None:
-        destination_ip = instance_info['ip']
-        rules = scp_utils.SCPClient().get_firewall_rules(firewall_id)
-        for rule in rules:
-            port_list = ','.join(rule['tcpServices'])
-            port = ','.join(ports)
-            if destination_ip == rule['destinationIpAddresses'][
-                    0] and '0.0.0.0/0' == rule['sourceIpAddresses'][
-                        0] and port == port_list:
-                rule_ids.append(rule['ruleId'])
-    else:
-        ip = instance_info['ip']
-        rules = scp_utils.SCPClient().get_firewall_rules(firewall_id)
-        for rule in rules:
-            if ip == rule['destinationIpAddresses'][0] and '0.0.0.0/0' == rule[
-                    'sourceIpAddresses'][0]:
-                rule_ids.append(rule['ruleId'])
-            if ip == rule['sourceIpAddresses'][0] and '0.0.0.0/0' == rule[
-                    'destinationIpAddresses'][0]:
-                rule_ids.append(rule['ruleId'])
-    return rule_ids
