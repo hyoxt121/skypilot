@@ -485,7 +485,8 @@ def open_ports(
             scp_utils.SCPClient().add_security_group_rule(sg_id, 'IN', ports)
             vpc_id = instance_info['vpcId']
             internal_ip = instance_info['ip']
-            _add_firewall_rule(vpc_id, internal_ip, 'IN', ports)
+            firewall_id = _get_firewall_id(vpc_id)
+            _add_firewall_rule(firewall_id, internal_ip, 'IN', ports)
 
 
 def cleanup_ports(
