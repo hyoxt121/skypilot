@@ -252,12 +252,12 @@ def _undo_functions(undo_func_list):
         func()
 
 
-def _create_instance_sequence(vpc, instance_config):
+def _create_instance_sequence(vpc_id, instance_config):
     undo_func_stack = []
     try:
         instance_id, internal_ip = _create_instance(instance_config)
         undo_func_stack.append(lambda: _delete_instance(instance_id))
-        firewall_id = _get_firewall_id(vpc)
+        firewall_id = _get_firewall_id(vpc_id)
         in_rule_id = _add_firewall_rule(firewall_id, internal_ip, 'IN', None)
         undo_func_stack.append(
             lambda: _delete_firewall_rule(firewall_id, in_rule_id))
