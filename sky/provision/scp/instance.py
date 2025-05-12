@@ -319,8 +319,7 @@ def _add_firewall_rule(firewall_id, internal_ip, direction,
                 rule_info = scp_utils.SCPClient().get_firewall_rule_info(
                     firewall_id, rule_id)
                 if rule_info['ruleState'] == 'ACTIVE':
-                    break
-            return rule_id
+                    return rule_id
         except Exception as e:  # pylint: disable=broad-except
             attempts += 1
             time.sleep(10)
@@ -339,7 +338,7 @@ def _delete_firewall_rule(firewall_id, rule_ids):
         try:
             scp_utils.SCPClient().delete_firewall_rule(firewall_id, rule_ids)
             if _remaining_firewall_rule(firewall_id, rule_ids) is False:
-                break
+                return
         except Exception as e:  # pylint: disable=broad-except
             attempts += 1
             time.sleep(5)
