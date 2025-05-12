@@ -73,7 +73,7 @@ def run_instances(region: str, cluster_name_on_cloud: str,
             instance_config['securityGroupIds'] = [sg_id]
             for subnet in subnets:
                 instance_config['nic']['subnetId'] = subnet
-                instance_id = _create_instance_sequence(vpc, instance_config)
+                instance_id = _create_instance(vpc, instance_config)
                 if instance_id is not None:
                     break
         except Exception as e:  # pylint: disable=broad-except
@@ -252,12 +252,19 @@ def _undo_functions(undo_func_list):
         func()
 
 
-def _create_instance_sequence(vpc_id, instance_config):
+def _create_instance(vpc_id, instance_config):
     undo_func_stack = []
     try:
-        instance_id, internal_ip = _create_instance(instance_config)
+        instance = scp_utils.SCPClient().create_instance(instance_config)
+        instance_id = instance['resourceId']
+        while True:
+            time.sleep(10)
+            instance_info = scp_utils.SCPClient().get_instance_info(instance_id)
+            if instance_info['virtualServerState'] == 'RUNNING':
+                break
         undo_func_stack.append(lambda: _delete_instance(instance_id))
         firewall_id = _get_firewall_id(vpc_id)
+        internal_ip = instance_info['ip']
         in_rule_id = _add_firewall_rule(firewall_id, internal_ip, 'IN', None)
         undo_func_stack.append(
             lambda: _delete_firewall_rule(firewall_id, in_rule_id))
@@ -347,17 +354,6 @@ def _add_firewall_rule(firewall_id, internal_ip, direction,
             logger.error(f'add firewall rule error: {e}')
             continue
     raise RuntimeError('add firewall rule error')
-
-
-def _create_instance(instance_config):
-    instance = scp_utils.SCPClient().create_instance(instance_config)
-    instance_id = instance['resourceId']
-    while True:
-        time.sleep(10)
-        instance_info = scp_utils.SCPClient().get_instance_info(instance_id)
-        if instance_info['virtualServerState'] == 'RUNNING':
-            break
-    return instance_id, instance_info['ip']
 
 
 def stop_instances(
