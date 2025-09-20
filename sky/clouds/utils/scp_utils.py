@@ -361,8 +361,7 @@ class SCPClient:
                       url: str,
                       timestamp: Optional[str] = None) -> str:
         if timestamp is None:
-            import time as _t
-            timestamp = str(int(_t.time() * 1000))
+            timestamp = str(int(time.time() * 1000))
 
         url_info = parse.urlsplit(url)
         url = (f'{url_info.scheme}://{url_info.netloc}'
