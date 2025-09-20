@@ -1,13 +1,14 @@
 """SCP instance provisioning."""
 
+from concurrent.futures import as_completed
+from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 import logging
 import random
 import string
 import time
 from typing import Any, Dict, List, Optional
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from copy import deepcopy
 from sky.clouds.utils import scp_utils
 from sky.provision import common
 from sky.utils import status_lib
@@ -106,13 +107,13 @@ def run_instances(region: str, cluster_name_on_cloud: str,
         raise RuntimeError(f'instance creation error: {name}')
 
     names = [_head(cluster_name_on_cloud)] + [
-        f"{_worker(cluster_name_on_cloud)}-{i:02d}"
+        f'{_worker(cluster_name_on_cloud)}-{i:02d}'
         for i in range(1, to_start_count)
     ]
 
     with ThreadPoolExecutor(max_workers=min(to_start_count, 32)) as ex:
-        execution = {name: ex.submit(_create, name) for name in names}
-        instance_ids = [execution[name].result() for name in names]
+        execution = [ex.submit(_create, name) for name in names]
+        instance_ids = [e.result() for e in execution]
 
     head_instance_id = instance_ids[0]
     created_instance_ids = instance_ids
