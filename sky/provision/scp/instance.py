@@ -101,7 +101,7 @@ def run_instances(region: str, cluster_name_on_cloud: str,
                 if not created_in_this_vpc:
                     try:
                         _delete_security_group(sg_id)
-                    except Exception:
+                    except Exception:  # pylint: disable=broad-except
                         pass
 
         raise RuntimeError(f'instance creation error: {name}')
