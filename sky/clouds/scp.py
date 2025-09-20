@@ -19,7 +19,7 @@ from sky.utils import status_lib
 if typing.TYPE_CHECKING:
     # Renaming to avoid shadowing variables.
     from sky import resources as resources_lib
-    from sky.utils import volume as volume_lib
+    from sky.volumes import volume as volume_lib
 
 _CREDENTIAL_FILES = [
     'scp_credential',
@@ -41,10 +41,7 @@ class SCP(clouds.Cloud):
     # Reference: https://cloud.samsungsds.com/openapiguide/#/docs
     #            /v2-en-virtual_server-definitions-VirtualServerCreateV3Request
     _MAX_CLUSTER_NAME_LEN_LIMIT = 28
-    # MULTI_NODE: Multi-node is not supported by the implementation yet.
-    _MULTI_NODE = 'Multi-node is not supported by the SCP Cloud yet.'
     _CLOUD_UNSUPPORTED_FEATURES = {
-        clouds.CloudImplementationFeatures.MULTI_NODE: _MULTI_NODE,
         clouds.CloudImplementationFeatures.CLONE_DISK_FROM_CLUSTER:
             (f'Migrating disk is currently not supported on {_REPR}.'),
         clouds.CloudImplementationFeatures.IMAGE_ID:
@@ -156,17 +153,14 @@ class SCP(clouds.Cloud):
 
     @classmethod
     def get_default_instance_type(
-            cls,
-            cpus: Optional[str] = None,
-            memory: Optional[str] = None,
-            disk_tier: Optional['resources_utils.DiskTier'] = None,
-            region: Optional[str] = None,
-            zone: Optional[str] = None) -> Optional[str]:
+        cls,
+        cpus: Optional[str] = None,
+        memory: Optional[str] = None,
+        disk_tier: Optional['resources_utils.DiskTier'] = None
+    ) -> Optional[str]:
         return catalog.get_default_instance_type(cpus=cpus,
                                                  memory=memory,
                                                  disk_tier=disk_tier,
-                                                 region=region,
-                                                 zone=zone,
                                                  clouds='scp')
 
     @classmethod
@@ -304,9 +298,7 @@ class SCP(clouds.Cloud):
             default_instance_type = SCP.get_default_instance_type(
                 cpus=resources.cpus,
                 memory=resources.memory,
-                disk_tier=resources.disk_tier,
-                region=resources.region,
-                zone=resources.zone)
+                disk_tier=resources.disk_tier)
             if default_instance_type is None:
                 return resources_utils.FeasibleResources([], [], None)
             else:
